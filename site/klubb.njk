@@ -1,0 +1,62 @@
+---
+layout: base.njk
+pagination:
+  data: generated.clubs
+  size: 1
+  alias: club
+permalink: "/klubbar/{{ club.slug }}/"
+eleventyComputed:
+  title: "{{ club.name }} i Allsvenskan"
+  description: "{{ club.name }} i Allsvenskan: {{ club.totals.seasons }} säsonger, {{ club.titles.length }} seriesegrar. Historik, rekord och egendomligheter."
+---
+<article>
+  <p class="kicker"><a href="/klubbar/">Klubbar</a></p>
+  <h1>{{ club.name }}</h1>
+
+  <div class="stat-row">
+    <div class="stat"><strong>{{ club.totals.seasons }}</strong><span>säsonger</span></div>
+    <div class="stat"><strong>{{ club.titles.length }}</strong><span>seriesegrar</span></div>
+    <div class="stat"><strong>{{ club.totals.played | nf }}</strong><span>matcher</span></div>
+    <div class="stat"><strong>{{ club.totals.gf | nf }}–{{ club.totals.ga | nf }}</strong><span>målskillnad</span></div>
+  </div>
+
+  {% if club.titles.length %}
+  <p><strong>Seriesegrar:</strong> {{ club.titles | join(", ") }}</p>
+  {% else %}
+  <p>{{ club.name }} har aldrig vunnit Allsvenskan
+     (bästa placering: {{ club.best_position }}, {{ club.best_seasons | join(", ") }}).</p>
+  {% endif %}
+
+  {% if club.biggest_win %}
+  <p><strong>Största seger:</strong>
+     {{ club.biggest_win.home }} – {{ club.biggest_win.away }}
+     {{ club.biggest_win.home_goals }}–{{ club.biggest_win.away_goals }}
+     ({{ club.biggest_win.season }}{% if club.biggest_win.date %}, {{ club.biggest_win.date | svDate }}{% endif %})</p>
+  {% endif %}
+  {% if club.worst_loss %}
+  <p><strong>Största förlust:</strong>
+     {{ club.worst_loss.home }} – {{ club.worst_loss.away }}
+     {{ club.worst_loss.home_goals }}–{{ club.worst_loss.away_goals }}
+     ({{ club.worst_loss.season }}{% if club.worst_loss.date %}, {{ club.worst_loss.date | svDate }}{% endif %})</p>
+  {% endif %}
+
+  <h2>Säsong för säsong</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Säsong</th><th>Plac.</th><th>S</th><th>V</th><th>O</th><th>F</th><th>Mål</th><th>P</th></tr></thead>
+    <tbody>
+    {% for s in club.seasons %}
+      <tr{% if s.position == 1 and not s.is_current %} class="gold"{% endif %}>
+        <td><a href="/sasonger/{{ s.season | seasonSlug }}/">{{ s.season }}</a>{% if s.is_current %} *{% endif %}</td>
+        <td>{{ s.position }}</td>
+        <td>{{ s.played }}</td><td>{{ s.won }}</td><td>{{ s.drawn }}</td><td>{{ s.lost }}</td>
+        <td>{{ s.gf }}–{{ s.ga }}</td><td>{{ s.points }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="coverage">Underlag: Allsvenskans publicerade sluttabeller
+     1924/1925–idag. * = pågående säsong.
+     {% if club.wiki_page %}Källa: <a href="https://sv.wikipedia.org/wiki/{{ club.wiki_page | urlencode }}">Wikipedia: {{ club.wiki_page }}</a> (CC BY-SA).{% endif %}</p>
+</article>

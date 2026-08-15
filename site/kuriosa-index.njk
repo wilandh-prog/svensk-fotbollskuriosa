@@ -1,0 +1,17 @@
+---
+layout: base.njk
+title: "Alla kuriositeter"
+description: "Alla statistiska kuriositeter ur Allsvenskans historia, sorterade per kategori."
+permalink: /kuriosa/
+---
+<h1>Alla kuriositeter</h1>
+{% for cat in categories %}
+<section>
+  <h2><a href="/kategori/{{ cat.slug }}/">{{ cat.name }}</a></h2>
+  <ul>
+    {% for c in cat.curiosities %}
+    <li><a href="/kuriosa/{{ c.id }}/">{{ c.title }}</a> — {{ c.description }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}

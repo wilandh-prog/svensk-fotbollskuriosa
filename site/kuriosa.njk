@@ -1,0 +1,19 @@
+---
+layout: base.njk
+pagination:
+  data: generated.curiosities
+  size: 1
+  alias: c
+permalink: "/kuriosa/{{ c.id }}/"
+eleventyComputed:
+  title: "{{ c.title }}"
+  description: "{{ c.description }} Underlag: {{ c.coverage }}."
+---
+<article>
+  <p class="kicker"><a href="/kuriosa/">Kuriosa</a></p>
+  <h1>{{ c.title }}</h1>
+  <p>{{ c.description }}</p>
+  {% include "ctable.njk" %}
+  <p class="muted">Källor: sammanställt ur Wikipedias säsongsartiklar med
+     korsverifiering — se <a href="/om/">metod och källor</a>.</p>
+</article>

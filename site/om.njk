@@ -1,0 +1,44 @@
+---
+layout: base.njk
+title: "Om & källor"
+description: "Metod, datakällor och kvalitetskontroller bakom Svensk Fotbollskuriosa."
+permalink: /om/
+---
+<h1>Om sajten</h1>
+<p>{{ site.title }} samlar statistiska egendomligheter ur Allsvenskans historia
+   sedan premiären 1924/1925 — rekord, sviter, anomalier och bortglömda
+   anekdoter. Fokus är korrekthet: <em>en felaktig rekorduppgift är värre än en
+   saknad</em>, så varje statistik redovisar sitt beräkningsunderlag.</p>
+
+<h2>Metod</h2>
+<ul>
+  <li>Sluttabeller och resultatmatriser hämtas från svenska Wikipedias
+      säsongsartiklar för samtliga {{ generated.meta.season_count }} säsonger.</li>
+  <li>Varje säsongs matchresultat stäms av mot den publicerade sluttabellen:
+      spelade matcher, vinster, oavgjorda, förluster och målskillnad måste
+      stämma exakt för varje klubb innan matchdatat godkänns.</li>
+  <li>Vid enstaka avvikelser korsverifieras resultaten mot engelska Wikipedias
+      motsvarande artikel; bara kombinationer som exakt återskapar sluttabellen
+      accepteras.</li>
+  <li>Säsonger där källorna inte går att förena exakt
+      ({{ generated.meta.season_count - generated.meta.complete_match_seasons }} stycken,
+      bl.a. maratonsäsongen 1957/1958) redovisas med enbart tabelldata.</li>
+  <li>Specialfall som tilldömda matcher (protester, walkover) och Malmö FF:s
+      uteslutning 1933/1934 hanteras explicit och anges på respektive säsongssida.</li>
+  <li>Matchdatum finns bara för ett fåtal sentida säsonger; datumberoende
+      kuriosa anger detta smalare underlag.</li>
+</ul>
+
+<h2>Datakällor</h2>
+<ul>
+  {% for src in generated.meta.sources %}
+  <li><a href="{{ src.url }}">{{ src.name }}</a> — {{ src.role }}</li>
+  {% endfor %}
+</ul>
+<p>Tabelldata och resultat härledda ur Wikipedia återges under licensen
+   <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.sv">CC BY-SA 4.0</a>.
+   Sajten använder ingen spårning och ingen JavaScript.</p>
+
+<h2>Uppdateringar</h2>
+<p>Datat uppdateras automatiskt en gång per dygn. Senaste uppdatering:
+   {{ generated.meta.generated_at | svDate }}.</p>

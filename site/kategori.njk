@@ -1,0 +1,20 @@
+---
+layout: base.njk
+pagination:
+  data: categories
+  size: 1
+  alias: cat
+permalink: "/kategori/{{ cat.slug }}/"
+eleventyComputed:
+  title: "{{ cat.name }}"
+  description: "{{ cat.description }}"
+---
+<h1>{{ cat.name }}</h1>
+<p>{{ cat.description }}</p>
+{% for c in cat.curiosities %}
+<section class="card">
+  <h2><a href="/kuriosa/{{ c.id }}/">{{ c.title }}</a></h2>
+  <p>{{ c.description }}</p>
+  {% include "ctable.njk" %}
+</section>
+{% endfor %}

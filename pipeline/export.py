@@ -25,8 +25,201 @@ def slugify(name: str) -> str:
     return s
 
 
+MONTHS_SV = [
+    "", "januari", "februari", "mars", "april", "maj", "juni",
+    "juli", "augusti", "september", "oktober", "november", "december",
+]
+
+
+def fmt_date(iso: str | None) -> str:
+    if not iso:
+        return ""
+    d = dt.date.fromisoformat(iso)
+    return f"{d.day} {MONTHS_SV[d.month]} {d.year}"
+
+
+def _score(i: dict) -> str:
+    s = f"{i['home_goals']}–{i['away_goals']}"
+    if i.get("ht_home") is not None:
+        s += f" ({i['ht_home']}–{i['ht_away']})"
+    return s
+
+
+def _gd(i: dict) -> str:
+    d = i["gf"] - i["ga"]
+    return f"+{d}" if d > 0 else str(d)
+
+
+# per-curiosity display spec: (column label, cell renderer)
+_MATCH_COLS = [
+    ("Säsong", lambda i: i["season"]),
+    ("Datum", lambda i: fmt_date(i.get("date"))),
+    ("Hemmalag", lambda i: i["home"]),
+    ("Resultat", _score),
+    ("Bortalag", lambda i: i["away"]),
+]
+_TABLEROW_COLS = [
+    ("Säsong", lambda i: i["season"]),
+    ("Klubb", lambda i: i["club"]),
+    ("S", lambda i: i["played"]),
+    ("V", lambda i: i["won"]),
+    ("O", lambda i: i["drawn"]),
+    ("F", lambda i: i["lost"]),
+    ("Mål", lambda i: f"{i['gf']}–{i['ga']}"),
+    ("MS", _gd),
+    ("P", lambda i: i["points"]),
+]
+
+PRESENTATIONS: dict[str, list] = {
+    "unbeaten-seasons": _TABLEROW_COLS,
+    "winless-seasons": _TABLEROW_COLS,
+    "relegated-best-gd": _TABLEROW_COLS,
+    "best-goal-difference": _TABLEROW_COLS,
+    "worst-goal-difference": _TABLEROW_COLS,
+    "most-goals-per-game": _TABLEROW_COLS
+    + [("Mål/match", lambda i: f"{i['gf'] / i['played']:.2f}".replace(".", ","))],
+    "fewest-goals-conceded": _TABLEROW_COLS
+    + [("Insläppta/match", lambda i: f"{i['ga'] / i['played']:.2f}".replace(".", ","))],
+    "closest-title-races": [
+        ("Säsong", lambda i: i["season"]),
+        ("Seriesegrare", lambda i: i["winner"]),
+        ("Tvåa", lambda i: i["runner_up"]),
+        ("Poäng", lambda i: f"{i['winner_points']}–{i['runner_points']}"),
+        ("Målskillnad", lambda i: f"{i['winner_gd']:+d} mot {i['runner_gd']:+d}"),
+    ],
+    "biggest-title-margins": [
+        ("Säsong", lambda i: i["season"]),
+        ("Seriesegrare", lambda i: i["winner"]),
+        ("Tvåa", lambda i: i["runner_up"]),
+        ("Poäng", lambda i: f"{i['winner_points']}–{i['runner_points']}"),
+        ("Marginal", lambda i: f"{i['margin']} p på {i['played']} matcher"),
+    ],
+    "goal-rich-seasons": [
+        ("Säsong", lambda i: i["season"]),
+        ("Lag", lambda i: i["num_teams"]),
+        ("Matcher", lambda i: i["matches"]),
+        ("Mål", lambda i: i["goals"]),
+        ("Mål/match", lambda i: str(i["goals_per_match"]).replace(".", ",")),
+    ],
+    "goal-poor-seasons": [
+        ("Säsong", lambda i: i["season"]),
+        ("Lag", lambda i: i["num_teams"]),
+        ("Matcher", lambda i: i["matches"]),
+        ("Mål", lambda i: i["goals"]),
+        ("Mål/match", lambda i: str(i["goals_per_match"]).replace(".", ",")),
+    ],
+    "low-scoring-champions": [
+        ("Säsong", lambda i: i["season"]),
+        ("Klubb", lambda i: i["club"]),
+        ("V-O-F", lambda i: f"{i['won']}-{i['drawn']}-{i['lost']}"),
+        ("Poäng", lambda i: f"{i['points']} av {i['played']} matcher"),
+        ("Poängandel", lambda i: f"{i['points_share'] * 100:.1f} %".replace(".", ",")),
+    ],
+    "biggest-home-wins": _MATCH_COLS,
+    "biggest-away-wins": _MATCH_COLS,
+    "highest-scoring-matches": _MATCH_COLS,
+    "identical-double": [
+        ("Säsong", lambda i: i["season"]),
+        ("Möte", lambda i: f"{i['club_a']} – {i['club_b']}"),
+        ("Resultat båda gångerna", lambda i: i["result"]),
+    ],
+    "double-beatings": [
+        ("Säsong", lambda i: i["season"]),
+        ("Vinnare", lambda i: i["winner"]),
+        ("Förlorare", lambda i: i["loser"]),
+        ("Hemma", lambda i: i["home_result"]),
+        ("Borta", lambda i: i["away_result"]),
+        ("Total marginal", lambda i: f"+{i['total_margin']}"),
+    ],
+    "home-fortresses": [
+        ("Säsong", lambda i: i["season"]),
+        ("Klubb", lambda i: i["club"]),
+        ("Hemmamatcher", lambda i: f"{i['home_games']} – alla vunna"),
+        ("Mål hemma", lambda i: f"{i['gf']}–{i['ga']}"),
+    ],
+    "away-disasters": [
+        ("Säsong", lambda i: i["season"]),
+        ("Klubb", lambda i: i["club"]),
+        ("Bortamatcher", lambda i: f"{i['away_games']} – alla förlorade"),
+        ("Mål borta", lambda i: f"{i['gf']}–{i['ga']}"),
+    ],
+    "on-this-day": _MATCH_COLS,
+    "ht-comebacks": _MATCH_COLS
+    + [("Underläge i halvtid", lambda i: f"{i['deficit']} mål")],
+    "longest-unbeaten-runs": [
+        ("Klubb", lambda i: i["club"]),
+        ("Säsong", lambda i: i["season"]),
+        ("Matcher utan förlust", lambda i: i["len"]),
+        ("Period", lambda i: f"{fmt_date(i['start'])} – {fmt_date(i['end'])}"),
+    ],
+    "losing-streaks": [
+        ("Klubb", lambda i: i["club"]),
+        ("Säsong", lambda i: i["season"]),
+        ("Raka förluster", lambda i: i["len"]),
+        ("Period", lambda i: f"{fmt_date(i['start'])} – {fmt_date(i['end'])}"),
+    ],
+    "maraton-table": [
+        ("Klubb", lambda i: i["club"]),
+        ("Säsonger", lambda i: i["seasons"]),
+        ("S", lambda i: i["played"]),
+        ("V", lambda i: i["won"]),
+        ("O", lambda i: i["drawn"]),
+        ("F", lambda i: i["lost"]),
+        ("Mål", lambda i: f"{i['gf']}–{i['ga']}"),
+        ("P (3 p/vinst)", lambda i: i["points_3p"]),
+    ],
+    "league-titles": [
+        ("Klubb", lambda i: i["club"]),
+        ("Seriesegrar", lambda i: i["titles"]),
+        ("Säsonger", lambda i: i["seasons"]),
+    ],
+    "most-seasons-no-title": [
+        ("Klubb", lambda i: i["club"]),
+        ("Säsonger utan serieseger", lambda i: i["seasons"]),
+        ("Period", lambda i: f"{i['first_season']} – {i['last_season']}"),
+        ("Bästa placering", lambda i: i["best_position"]),
+    ],
+    "yo-yo-clubs": [
+        ("Klubb", lambda i: i["club"]),
+        ("Sejourer", lambda i: i["spells"]),
+        ("Säsonger totalt", lambda i: i["seasons"]),
+    ],
+    "ever-presents": [
+        ("Klubb", lambda i: i["club"]),
+        ("Raka säsonger", lambda i: i["len"]),
+        ("Period", lambda i: f"{i['from']} – {i['to']}"),
+    ],
+}
+
+
+def _present(cur: dict) -> dict:
+    spec = PRESENTATIONS.get(cur["id"])
+    if spec:
+        cur["columns"] = [label for label, _ in spec]
+        cur["rows"] = [[str(fn(i)) for _, fn in spec] for i in cur["items"]]
+    elif cur["id"] == "derby-alltime":
+        derbies = []
+        for d in cur["items"]:
+            derbies.append(
+                {
+                    "name": d["name"],
+                    "columns": ["Hemmalag", "Bortalag", "Matcher", "1", "X", "2", "Mål"],
+                    "rows": [
+                        [
+                            p["home"], p["away"], str(p["matches"]),
+                            str(p["home_wins"]), str(p["draws"]), str(p["away_wins"]),
+                            f"{p['home_goals']}–{p['away_goals']}",
+                        ]
+                        for p in d["pairs"]
+                    ],
+                }
+            )
+        cur["derbies"] = derbies
+    return cur
+
+
 def export_curiosities(conn: sqlite3.Connection) -> list[dict]:
-    return compute_all(conn)
+    return [_present(c) for c in compute_all(conn)]
 
 
 def export_clubs(conn: sqlite3.Connection) -> list[dict]:

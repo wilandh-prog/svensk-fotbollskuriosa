@@ -1,0 +1,38 @@
+---
+layout: base.njk
+description: "Statistiska kuriositeter ur Allsvenskans historia sedan 1924: rekord, sviter, egendomligheter, derbyn och bortglömda anekdoter — uppdaterat varje dag."
+---
+<section class="hero">
+  <h1>{{ site.tagline }}</h1>
+  <p>Inga liveresultat. Ingen transferskvaller. Bara noga kontrollerad statistisk
+     kuriosa ur {{ generated.meta.season_count }} allsvenska säsonger och
+     {{ generated.meta.match_count | nf }} matcher.</p>
+</section>
+
+<section class="card featured">
+  <p class="kicker">Dagens kuriosa</p>
+  <h2><a href="/kuriosa/{{ daily.pick.id }}/">{{ daily.pick.title }}</a></h2>
+  <p>{{ daily.pick.description }}</p>
+  {% set c = daily.pick %}
+  {% include "ctable.njk" %}
+</section>
+
+<section class="card">
+  <p class="kicker">Denna vecka i historien</p>
+  <h2>{{ daily.onThisDay.title }}</h2>
+  {% set c = daily.onThisDay %}
+  {% include "ctable.njk" %}
+</section>
+
+<section>
+  <h2>Utforska kuriosan</h2>
+  <div class="cat-grid">
+    {% for cat in categories %}
+    <a class="cat-card" href="/kategori/{{ cat.slug }}/">
+      <h3>{{ cat.name }}</h3>
+      <p>{{ cat.description }}</p>
+      <p class="muted">{{ cat.curiosities.length }} kuriositeter</p>
+    </a>
+    {% endfor %}
+  </div>
+</section>

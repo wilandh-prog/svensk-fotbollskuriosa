@@ -1,0 +1,44 @@
+---
+layout: base.njk
+pagination:
+  data: generated.seasons
+  size: 1
+  alias: s
+permalink: "/sasonger/{{ s.label | seasonSlug }}/"
+eleventyComputed:
+  title: "Allsvenskan {{ s.label }}"
+  description: "Sluttabell och kuriosa för Allsvenskan {{ s.label }}{% if not s.is_current %} — seriesegrare {{ s.table[0].club }}{% endif %}."
+---
+<article>
+  <p class="kicker"><a href="/sasonger/">Säsonger</a></p>
+  <h1>Allsvenskan {{ s.label }}{% if s.is_current %} <span class="muted">(pågår)</span>{% endif %}</h1>
+
+  {% if s.notes %}
+  <div class="note">{{ s.notes }}</div>
+  {% endif %}
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>#</th><th>Klubb</th><th>S</th><th>V</th><th>O</th><th>F</th><th>Mål</th><th>P</th></tr></thead>
+    <tbody>
+    {% for r in s.table %}
+      <tr{% if r.position == 1 and not s.is_current %} class="gold"{% endif %}>
+        <td>{{ r.position }}</td>
+        <td>{{ r.club }}</td>
+        <td>{{ r.played }}</td><td>{{ r.won }}</td><td>{{ r.drawn }}</td><td>{{ r.lost }}</td>
+        <td>{{ r.gf }}–{{ r.ga }}</td><td>{{ r.points }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <p class="coverage">
+    Källa: <a href="https://sv.wikipedia.org/wiki/{{ s.wiki_page | urlencode }}">Wikipedia: {{ s.wiki_page }}</a> (CC BY-SA 4.0).
+    {% if s.match_data_complete %}Samtliga {{ s.table.length }} lags matchresultat är
+    ingesterade och verifierade mot sluttabellen{% if s.has_dates %} med matchdatum
+    från {{ s.match_source }}{% endif %}.{% elif s.is_current %}Pågående säsong —
+    resultat uppdateras dagligen.{% else %}Individuella matchresultat är utelämnade
+    för denna säsong (källorna går inte att förena exakt med sluttabellen).{% endif %}
+  </p>
+</article>

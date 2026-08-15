@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if title %}{{ title }} – {% endif %}{{ site.title }}</title>
+  <meta name="description" content="{{ description or site.tagline }}">
+  {% if site.url %}<link rel="canonical" href="{{ site.url }}{{ page.url }}">{% endif %}
+  <meta property="og:title" content="{% if title %}{{ title }} – {% endif %}{{ site.title }}">
+  <meta property="og:description" content="{{ description or site.tagline }}">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="sv_SE">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="/">⚽ {{ site.title }}</a>
+  <nav>
+    <a href="/kuriosa/">Kuriosa</a>
+    <a href="/klubbar/">Klubbar</a>
+    <a href="/sasonger/">Säsonger</a>
+    <a href="/om/">Om &amp; källor</a>
+  </nav>
+</header>
+<main>
+{{ content | safe }}
+</main>
+<footer class="site-footer">
+  <p>Data: Wikipedia (CC BY-SA 4.0), openfootball, footballcsv.
+     Uppdateras dagligen. <a href="/om/">Metod och källor</a>.</p>
+  <p>Byggd {{ generated.meta.build_date | svDate }}.
+     {{ generated.meta.season_count }} säsonger ·
+     {{ generated.meta.match_count | nf }} matcher ·
+     {{ generated.meta.club_count }} klubbar.</p>
+</footer>
+</body>
+</html>

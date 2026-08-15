@@ -1,0 +1,24 @@
+---
+layout: base.njk
+title: "Klubbar"
+description: "Alla 67 klubbar som spelat i Allsvenskan sedan 1924 — historiska egendomligheter och rekord för varje klubb."
+permalink: /klubbar/
+---
+<h1>Klubbarna i Allsvenskan</h1>
+<p>{{ generated.clubs.length }} klubbar har spelat i Allsvenskan sedan starten
+   1924/1925. Klicka på en klubb för dess historia och egendomligheter.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Klubb</th><th>Säsonger</th><th>Seriesegrar</th><th>Bästa placering</th></tr></thead>
+  <tbody>
+  {% for club in generated.clubs | sort(true, false, "totals.seasons") %}
+    <tr>
+      <td><a href="/klubbar/{{ club.slug }}/">{{ club.name }}</a></td>
+      <td>{{ club.totals.seasons }}</td>
+      <td>{{ club.titles.length }}</td>
+      <td>{{ club.best_position }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
