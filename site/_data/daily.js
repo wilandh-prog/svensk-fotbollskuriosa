@@ -14,7 +14,15 @@ export default function () {
     (c) => c.id !== "on-this-day" && (c.rows?.length || c.derbies?.length)
   );
   const pick = eligible[day % eligible.length];
-  // only Allsvenskan has per-match dates, so there is one such section
   const onThisDay = curiosities.find((c) => c.id === "on-this-day");
-  return { pick, onThisDay };
+
+  // the handful of fixtures closest in time, for the front page
+  const previews = JSON.parse(
+    fs.readFileSync(path.join(dir, "previews.json"), "utf-8")
+  );
+  const nextMatches = previews
+    .filter((p) => p.facts.length)
+    .slice(0, 3);
+
+  return { pick, onThisDay, nextMatches };
 }

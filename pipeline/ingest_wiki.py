@@ -93,7 +93,7 @@ def ingest_season(
     html = wiki_rendered_html(page, max_age_s=max_age)
     table = parse_league_table(html)
     matrix, missing = parse_result_matrix(html)
-    rec = reconcile(table, matrix, missing, allow_derive=not current)
+    rec = reconcile(table, matrix, missing, allow_derive=not current, ns=comp.ns)
     n = len(table)
     all_matches = matrix + rec.derived
     complete = rec.complete
@@ -114,7 +114,7 @@ def ingest_season(
         except FetchError:
             pass
 
-        merged = best_merge(table, matrix, en_matrix) if en_matrix else None
+        merged = best_merge(table, matrix, en_matrix, ns=comp.ns) if en_matrix else None
         if merged:
             all_matches, _ = merged
             complete = True
@@ -124,14 +124,14 @@ def ingest_season(
             # both matrices agree -> suspect a typo in the sv *table*.
             # Accept the en table only if the matches reproduce it exactly
             # AND it agrees with the sv table on positions and points.
-            merged2 = best_merge(en_table, matrix, en_matrix)
-            sv_key = {canonical_name(r.team, r.team_link): (r.position, r.points) for r in table}
-            en_key = {canonical_name(r.team, r.team_link): (r.position, r.points) for r in en_table}
+            merged2 = best_merge(en_table, matrix, en_matrix, ns=comp.ns)
+            sv_key = {canonical_name(r.team, r.team_link, comp.ns): (r.position, r.points) for r in table}
+            en_key = {canonical_name(r.team, r.team_link, comp.ns): (r.position, r.points) for r in en_table}
             if merged2 and sv_key == en_key:
                 # keep sv display names/links, take the reconciled numbers
-                en_by_club = {canonical_name(r.team, r.team_link): r for r in en_table}
+                en_by_club = {canonical_name(r.team, r.team_link, comp.ns): r for r in en_table}
                 for r in table:
-                    e = en_by_club[canonical_name(r.team, r.team_link)]
+                    e = en_by_club[canonical_name(r.team, r.team_link, comp.ns)]
                     r.played, r.won, r.drawn, r.lost = e.played, e.won, e.drawn, e.lost
                     r.gf, r.ga = e.gf, e.ga
                 all_matches, _ = merged2
@@ -178,7 +178,7 @@ def ingest_season(
         conn.execute("DELETE FROM league_table WHERE season_id = ?", (season_id,))
         for r in table:
             club_id = db.get_or_create_club(
-                conn, canonical_name(r.team, r.team_link), r.team_link, ns=comp.ns
+                conn, canonical_name(r.team, r.team_link, comp.ns), r.team_link, ns=comp.ns
             )
             conn.execute(
                 """
@@ -199,10 +199,10 @@ def ingest_season(
             )
             for m in (all_matches if ingest_matches else []):
                 home_id = db.get_or_create_club(
-                    conn, canonical_name(m.home, m.home_link), m.home_link, ns=comp.ns
+                    conn, canonical_name(m.home, m.home_link, comp.ns), m.home_link, ns=comp.ns
                 )
                 away_id = db.get_or_create_club(
-                    conn, canonical_name(m.away, m.away_link), m.away_link, ns=comp.ns
+                    conn, canonical_name(m.away, m.away_link, comp.ns), m.away_link, ns=comp.ns
                 )
                 conn.execute(
                     """

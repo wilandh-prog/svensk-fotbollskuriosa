@@ -1,0 +1,24 @@
+---
+layout: base.njk
+title: "Kommande matcher"
+description: "Alla kommande matcher i Allsvenskan, Superettan och Damallsvenskan — med statistisk kuriosa inför varje möte."
+permalink: /matcher/
+---
+<h1>Kommande matcher</h1>
+<p>{{ generated.meta.fixture_count }} matcher i spelprogrammet.
+   De {{ generated.meta.preview_count }} närmaste har en egen sida med kuriosa
+   om lagen: formsviter, inbördes möten och gamla oddheter.</p>
+
+{% for day in generated.fixtures %}
+<h2>{{ day.date_text }}</h2>
+{% for f in day.matches %}
+  <div class="fixture">
+    <span class="fixture-time">{{ f.local_time }}</span>
+    <span class="fixture-teams">
+      {% if f.has_preview %}<a href="/matcher/{{ f.slug }}/">{{ f.home }} – {{ f.away }}</a>
+      {% else %}{{ f.home }} – {{ f.away }}{% endif %}
+    </span>
+    <span class="fixture-meta">{{ f.comp_name }}{% if f.round %} · omg {{ f.round }}{% endif %}{% if f.arena %} · {{ f.arena }}{% endif %}</span>
+  </div>
+{% endfor %}
+{% endfor %}

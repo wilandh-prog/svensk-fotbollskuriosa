@@ -66,11 +66,22 @@ def test_allsvenskan_owns_the_root_urls(all_results):
             assert r["slug"] == f"{r['comp']}/{r['id']}"
 
 
-def test_dated_curiosities_only_where_dates_exist(conn):
-    # only Allsvenskan has per-match dates ingested
-    assert REGISTRY["on-this-day"].compute(conn, "superettan") is None
-    assert REGISTRY["longest-unbeaten-runs"].compute(conn, "damallsvenskan") is None
-    assert REGISTRY["longest-unbeaten-runs"].compute(conn, "allsvenskan") is not None
+def test_dated_curiosities_track_where_dates_exist(conn):
+    """A date-based curiosity must appear exactly for the competitions
+    that actually have dated seasons — never invented, never withheld."""
+    for comp in COMPETITIONS:
+        dated = conn.execute(
+            """
+            SELECT COUNT(*) AS c FROM season
+            WHERE has_dates = 1
+              AND competition_id = (SELECT id FROM competition WHERE code = ?)
+            """,
+            (comp,),
+        ).fetchone()["c"]
+        result = REGISTRY["longest-unbeaten-runs"].compute(conn, comp)
+        assert (result is not None) == (dated > 0), comp
+        if result:
+            assert str(dated) in result["coverage"] or result["coverage"]
 
 
 # --- Allsvenskan facts -----------------------------------------------

@@ -78,6 +78,41 @@ def cached_get(url: str, *, max_age_s: float | None = None, params: dict | None 
     return resp.text
 
 
+def cached_post_json(url: str, payload: dict, *, max_age_s: float | None = None) -> dict:
+    """POST JSON and cache the response, keyed by URL + body.
+
+    Used for the league GraphQL API; obeys the same rate limit as GET.
+    """
+    key = url + "#" + hashlib.sha256(
+        json.dumps(payload, sort_keys=True).encode()
+    ).hexdigest()[:32]
+    body_p, meta_p = _cache_paths(key)
+    if body_p.exists() and meta_p.exists():
+        meta = json.loads(meta_p.read_text(encoding="utf-8"))
+        if max_age_s is None or (time.time() - meta["fetched_at"]) < max_age_s:
+            return json.loads(body_p.read_text(encoding="utf-8"))
+
+    host = urllib.parse.urlparse(url).netloc
+    wait = _last_fetch_by_host.get(host, 0) + MIN_INTERVAL_S - time.time()
+    if wait > 0:
+        time.sleep(wait)
+    _last_fetch_by_host[host] = time.time()
+
+    resp = _session.post(url, json=payload, timeout=90)
+    if resp.status_code != 200:
+        raise FetchError(f"POST {url} -> HTTP {resp.status_code}")
+    data = resp.json()
+    if data.get("errors"):
+        raise FetchError(f"POST {url} -> GraphQL errors: {data['errors'][:1]}")
+    body_p.parent.mkdir(parents=True, exist_ok=True)
+    body_p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    meta_p.write_text(
+        json.dumps({"url": url, "fetched_at": time.time(), "status": resp.status_code}),
+        encoding="utf-8",
+    )
+    return data
+
+
 WIKI_API = "https://{lang}.wikipedia.org/w/api.php"
 
 

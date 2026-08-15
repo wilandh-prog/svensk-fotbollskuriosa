@@ -46,6 +46,23 @@ ALIASES: dict[str, str] = {
     "malmö ff (herrfotboll)": "Malmö FF",
     "varbergs bois": "Varbergs BoIS FC",
     "varberg": "Varbergs BoIS FC",
+    "gefle if ff": "Gefle IF",
+    # the league API drops or adds suffixes on many club names
+    "helsingborg": "Helsingborgs IF",
+    "helsingborg if": "Helsingborgs IF",
+    "falkenberg": "Falkenbergs FF",
+    "östersund": "Östersunds FK",
+    "jönköpings södra": "Jönköpings Södra IF",
+    "jönköping södra if": "Jönköpings Södra IF",
+    "akropolis": "Akropolis IF",
+    "västerås": "Västerås SK",
+    "halmstad bk": "Halmstads BK",
+    "vasalund": "Vasalunds IF",
+    "dalkurd": "Dalkurd FF",
+    "enköpings sk fk": "Enköpings SK",
+    "bodens bk ff": "Bodens BK",
+    "ik frej täby": "IK Frej",
+    "athletic fc united": "Nordic United FC",
     # women's clubs (kept apart from the men's clubs by the ns column,
     # so short display names are safe): article renames folded together
     "aik fotboll damer": "AIK",
@@ -64,17 +81,50 @@ ALIASES: dict[str, str] = {
 }
 
 
-def canonical_name(display: str, wiki_link: str | None = None) -> str:
-    """Resolve a display name (+ optional wiki link title) to canonical form."""
+# Women's football names that would otherwise collide with a *different*
+# men's club: the league API calls BK Häcken FF simply "BK Häcken", and
+# IFK Norrköping DFK "IFK Norrköping". Consulted only for ns="dam".
+DAM_ALIASES: dict[str, str] = {
+    "bk häcken": "BK Häcken FF",
+    "göteborg fc": "BK Häcken FF",
+    "ifk norrköping": "IFK Norrköping DFK",
+    "ik uppsala": "IK Uppsala Fotboll",
+    "kristianstad dff": "Kristianstads DFF",
+    "fc rosengård malmö": "FC Rosengård",
+    "ldb fc malmö": "FC Rosengård",
+    "aik dff": "AIK",
+    "djurgårdens if dff": "Djurgårdens IF",
+    "piteå if dff": "Piteå IF Dam",
+    "östers if": "Östers IF Dam",
+    "tyresö": "Tyresö FF",
+    "älvsjö aik ff": "Älvsjö AIK",
+    "umeå ik": "Umeå IK FF",
+    "umeå södra dff": "Umeå Södra FF",
+    "alingsås if": "Alingsås IF FF",
+    "jitex mölndal bk": "Jitex BK",
+    "holmalunds if alingsås": "Holmalunds IF",
+}
+
+
+def canonical_name(display: str, wiki_link: str | None = None, ns: str = "herr") -> str:
+    """Resolve a display name (+ optional wiki link title) to canonical form.
+
+    `ns` selects the club namespace ("herr"/"dam"); several women's teams
+    share a name with an unrelated men's club, so the namespace decides.
+    """
+    tables = ([DAM_ALIASES, ALIASES] if ns == "dam" else [ALIASES])
     for candidate in (display, wiki_link):
         if not candidate:
             continue
         key = candidate.casefold().strip()
-        if key in ALIASES:
-            return ALIASES[key]
+        for table in tables:
+            if key in table:
+                return table[key]
     import re
 
     name = (wiki_link or display).strip()
-    # strip Wikipedia disambiguation qualifiers: "X (fotbollsklubb)" etc.
-    name = re.sub(r"\s*\((?:herr)?fotboll(?:sklubb)?\)$", "", name, flags=re.I)
+    # strip Wikipedia disambiguation qualifiers: "X (fotbollsklubb)",
+    # "X (damer)" etc. — the namespace already keeps the teams apart
+    name = re.sub(r"\s*\((?:herr|dam)?fotboll(?:sklubb)?\)$", "", name, flags=re.I)
+    name = re.sub(r"\s*\((?:damer|herrar|dam|herr)\)$", "", name, flags=re.I)
     return name

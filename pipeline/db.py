@@ -74,6 +74,23 @@ CREATE TABLE IF NOT EXISTS match (
     source TEXT NOT NULL
 );
 
+-- matches not yet played, from the league's own fixture API
+CREATE TABLE IF NOT EXISTS fixture (
+    id INTEGER PRIMARY KEY,
+    season_id INTEGER NOT NULL REFERENCES season(id),
+    external_id TEXT NOT NULL UNIQUE,
+    round INTEGER,
+    kickoff_utc TEXT NOT NULL,
+    local_date TEXT NOT NULL,
+    local_time TEXT,
+    home_club_id INTEGER NOT NULL REFERENCES club(id),
+    away_club_id INTEGER NOT NULL REFERENCES club(id),
+    arena TEXT,
+    status TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS fixture_by_date ON fixture (local_date);
+
 CREATE UNIQUE INDEX IF NOT EXISTS match_unique
     ON match (season_id, home_club_id, away_club_id, IFNULL(date, ''));
 

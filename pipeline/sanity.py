@@ -108,9 +108,13 @@ def check_points_advisory(conn: sqlite3.Connection) -> list[str]:
 
 
 def check_current_season_match_counts(conn: sqlite3.Connection) -> list[str]:
-    """A running season's match list must track its live table: the count
-    of stored matches may only differ marginally from the table's played
-    sum (guards against fabricated/stale matrix data)."""
+    """Sanity-check the running season's match list.
+
+    Two things must hold: we can never hold more matches than the season
+    schedules, and we must not fall far *behind* the published table. The
+    reverse — holding more played matches than Wikipedia's table shows —
+    is normal, since the league's own API updates faster than the article.
+    """
     fails: list[str] = []
     for s in conn.execute("SELECT * FROM season WHERE is_current = 1").fetchall():
         played = conn.execute(
@@ -119,11 +123,39 @@ def check_current_season_match_counts(conn: sqlite3.Connection) -> list[str]:
         n_matches = conn.execute(
             "SELECT COUNT(*) AS c FROM match WHERE season_id = ?", (s["id"],)
         ).fetchone()["c"]
-        if abs(n_matches - played // 2) > 10:
+        scheduled = (s["num_teams"] or 0) * ((s["num_teams"] or 0) - 1)
+        if scheduled and n_matches > scheduled:
             fails.append(
-                f"{s['label']}: {n_matches} matcher lagrade men tabellen anger "
-                f"{played // 2} spelade"
+                f"{s['label']}: {n_matches} matcher lagrade men säsongen omfattar "
+                f"bara {scheduled}"
             )
+        if played // 2 - n_matches > 10:
+            fails.append(
+                f"{s['label']}: bara {n_matches} matcher lagrade medan tabellen "
+                f"anger {played // 2} spelade"
+            )
+    return fails
+
+
+def check_fixtures(conn: sqlite3.Connection) -> list[str]:
+    """Upcoming fixtures must be well-formed and not duplicate played matches."""
+    fails: list[str] = []
+    bad = conn.execute(
+        "SELECT COUNT(*) AS c FROM fixture WHERE home_club_id = away_club_id"
+    ).fetchone()["c"]
+    if bad:
+        fails.append(f"{bad} kommande matcher har samma lag på båda sidor")
+    clash = conn.execute(
+        """
+        SELECT COUNT(*) AS c FROM fixture f
+        JOIN match m ON m.season_id = f.season_id
+                    AND m.home_club_id = f.home_club_id
+                    AND m.away_club_id = f.away_club_id
+                    AND m.date = f.local_date
+        """
+    ).fetchone()["c"]
+    if clash:
+        fails.append(f"{clash} kommande matcher är redan inlagda som spelade")
     return fails
 
 
@@ -132,6 +164,7 @@ def run(conn: sqlite3.Connection) -> list[str]:
         check_tables(conn)
         + check_matches_vs_table(conn)
         + check_current_season_match_counts(conn)
+        + check_fixtures(conn)
     )
     for note in check_points_advisory(conn):
         print(f"  [advisory] {note}")

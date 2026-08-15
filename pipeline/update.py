@@ -8,7 +8,15 @@ from __future__ import annotations
 
 import sys
 
-from . import db, export, ingest_openfootball, ingest_wfb, ingest_wiki, sanity
+from . import (
+    db,
+    export,
+    ingest_openfootball,
+    ingest_sportomedia,
+    ingest_wfb,
+    ingest_wiki,
+    sanity,
+)
 
 
 def main() -> int:
@@ -20,6 +28,10 @@ def main() -> int:
         ingest_openfootball.run(conn)
         print("== cache.wfb ==")
         ingest_wfb.run(conn)
+        # last, so its dated (and separately verified) match data wins over
+        # the date-less Wikipedia matrices wherever it checks out
+        print("== spelprogram och datumsatta matcher (liga-API) ==")
+        ingest_sportomedia.run(conn)
 
         print("== Sanity-kontroller ==")
         failures = sanity.run(conn)

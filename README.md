@@ -35,6 +35,7 @@ Alla källor probades med riktiga anrop innan arkitekturen låstes (2026-08-15):
 
 | Källa | Status | Används till |
 |---|---|---|
+| Seriernas match-API (`gql.sportomedia.se/graphql`) | ✅ publikt GraphQL, ingen nyckel; samma källa som allsvenskan.se/superettan.se/damallsvenskan.se själva läser | **Kommande matcher** (avspark, omgång, arena) och **datumsatta resultat** från 1980-talet och framåt |
 | sv.wikipedia (MediaWiki API) | ✅ säsongsartiklar 1924/25–idag med sluttabell + resultatmatris | Ryggraden: tabeller alla säsonger, matchresultat via matriser |
 | en.wikipedia (MediaWiki API) | ✅ | Korsverifiering när sv-artikelns matris/tabell inte stämmer internt |
 | openfootball/europe (GitHub) | ✅ Allsvenskan 2023–2025 (2025 ofullständig) | Matchdatum, avsparkstider, halvtidsresultat 2023–2024 |
@@ -55,13 +56,21 @@ Malmö FF:s uteslutning 1933/34, maratonsäsongen 1957/58) hanteras explicit.
 Säsonger som inte kan verifieras publiceras med enbart tabelldata och en
 förklaring på säsongssidan.
 
+Match-API:ets historik prövas mot samma spärr: en säsong därifrån accepteras
+bara om matchlistan exakt återskapar den publicerade sluttabellen. Eftersom
+API:et etiketterar en klubbs hela historia med dess *nuvarande* namn (2003 års
+FC Café Opera-matcher ligger under Nordic United FC) paras okända lagnamn ihop
+med tabellens lag via exakt säsongsfacit — en felaktig gissning överlever inte
+avstämningen. Tolv säsonger avvisas på riktiga resultatavvikelser och behåller
+sin Wikipedia-data.
+
 **Täckning** (efter verifiering):
 
-| Liga | Säsonger | Komplett matchdata |
-|---|---|---|
-| Allsvenskan | 102 (1924/25–2026) | 95 |
-| Superettan | 27 (2000–2026) | 24 |
-| Damallsvenskan | 39 (1988–2026) | 17 |
+| Liga | Säsonger | Komplett matchdata | Med matchdatum |
+|---|---|---|---|
+| Allsvenskan | 102 (1924/25–2026) | 95 | 39 |
+| Superettan | 27 (2000–2026) | 24 | 24 |
+| Damallsvenskan | 39 (1988–2026) | 17 | 22 |
 
 Herr- och damklubbar hålls i separata namnrymder i databasen så att t.ex.
 Hammarby IF (herr) och Hammarby IF (dam) aldrig blandas ihop trots samma namn.
@@ -75,6 +84,22 @@ verifiera matchresultat emot, och Wikipedias cupartiklar har skiftande
 bracket-format över åren. Utan en oberoende verifieringsmodell skulle
 cupstatistik bryta mot sajtens korrekthetsprincip — den läggs till när en
 pålitlig avstämningsmetod finns.
+
+## Kuriosa inför match
+
+Varje kommande match inom tre veckor får en egen sida (`/matcher/<slug>/`) med
+statistik om de två lagen, framräknad i `pipeline/previews.py`:
+
+- **Formsviter**: utan seger, raka segrar, obesegrade, raka förluster, utan
+  gjorda mål, utan nollor, utan hemma- respektive bortaseger.
+- **Inbördes historik**: antal möten, facit, senaste mötet, när laget senast
+  besegrade motståndaren, största segern i mötet.
+- **Tabelläge** och form (V/O/F) för båda lagen.
+
+Sviterna räknas bara på matcher med känt datum och inbördes statistik bara på
+verifierade säsonger. Finns inget att belägga visas inget påstående — testerna
+i `pipeline/tests/test_previews.py` verifierar varje svitpåstående mot de
+underliggande resultaten.
 
 ## Kom igång lokalt
 

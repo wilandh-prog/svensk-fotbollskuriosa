@@ -448,11 +448,66 @@ def export_seasons(conn: sqlite3.Connection) -> list[dict]:
     return out
 
 
+def export_fixtures(conn: sqlite3.Connection) -> list[dict]:
+    """Every upcoming fixture, for the fixture list page."""
+    rows = conn.execute(
+        """
+        SELECT f.local_date, f.local_time, f.round, f.arena,
+               comp.code AS comp, comp.name AS comp_name,
+               h.name AS home, a.name AS away, h.ns AS ns
+        FROM fixture f
+        JOIN season s ON s.id = f.season_id
+        JOIN competition comp ON comp.id = s.competition_id
+        JOIN club h ON h.id = f.home_club_id
+        JOIN club a ON a.id = f.away_club_id
+        ORDER BY f.kickoff_utc, comp.code
+        """
+    ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["slug"] = fixture_slug(d["local_date"], d["home"], d["away"], d["ns"])
+        d["date_text"] = fmt_date(d["local_date"])
+        out.append(d)
+    return out
+
+
+def fixture_slug(date: str, home: str, away: str, ns: str) -> str:
+    suffix = "-dam" if ns == "dam" else ""
+    return f"{date}-{slugify(home)}-mot-{slugify(away)}{suffix}"
+
+
+def export_previews(conn: sqlite3.Connection) -> list[dict]:
+    from .previews import build_all
+
+    out = []
+    for p in build_all(conn):
+        ns = "dam" if p["comp"] == "damallsvenskan" else "herr"
+        p["slug"] = fixture_slug(p["date"], p["home"], p["away"], ns)
+        p["date_text"] = fmt_date(p["date"])
+        p["home_slug"] = slugify(p["home"]) + ("-dam" if ns == "dam" else "")
+        p["away_slug"] = slugify(p["away"]) + ("-dam" if ns == "dam" else "")
+        out.append(p)
+    return out
+
+
 def run(conn: sqlite3.Connection) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     curiosities = export_curiosities(conn)
     clubs = export_clubs(conn)
     seasons = export_seasons(conn)
+    fixtures = export_fixtures(conn)
+    previews = export_previews(conn)
+    with_preview = {p["slug"] for p in previews}
+    for f in fixtures:
+        f["has_preview"] = f["slug"] in with_preview
+    fixture_days: list[dict] = []
+    for f in fixtures:
+        if not fixture_days or fixture_days[-1]["date"] != f["local_date"]:
+            fixture_days.append(
+                {"date": f["local_date"], "date_text": f["date_text"], "matches": []}
+            )
+        fixture_days[-1]["matches"].append(f)
     meta = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "build_date": dt.date.today().isoformat(),
@@ -460,6 +515,8 @@ def run(conn: sqlite3.Connection) -> None:
         "complete_match_seasons": sum(1 for s in seasons if s["match_data_complete"]),
         "match_count": conn.execute("SELECT COUNT(*) c FROM match").fetchone()["c"],
         "club_count": len(clubs),
+        "fixture_count": len(fixtures),
+        "preview_count": len(previews),
         "competitions": [
             {
                 "code": code,
@@ -494,6 +551,12 @@ def run(conn: sqlite3.Connection) -> None:
                 "url": "https://github.com/footballcsv/cache.wfb",
                 "role": "Matchdatum 2019",
             },
+            {
+                "name": "Seriernas eget match-API (gql.sportomedia.se)",
+                "url": "https://allsvenskan.se/matcher",
+                "role": "Kommande matcher samt datumsatta resultat för de "
+                        "senaste decennierna — samma källa som ligornas egna sajter",
+            },
         ],
     }
     (OUT_DIR / "curiosities.json").write_text(
@@ -505,12 +568,19 @@ def run(conn: sqlite3.Connection) -> None:
     (OUT_DIR / "seasons.json").write_text(
         json.dumps(seasons, ensure_ascii=False, indent=1), encoding="utf-8"
     )
+    (OUT_DIR / "fixtures.json").write_text(
+        json.dumps(fixture_days, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
+    (OUT_DIR / "previews.json").write_text(
+        json.dumps(previews, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
     (OUT_DIR / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8"
     )
     print(
         f"Exporterade {len(curiosities)} kuriositeter, {len(clubs)} klubbar, "
-        f"{len(seasons)} säsonger -> {OUT_DIR}"
+        f"{len(seasons)} säsonger, {len(fixtures)} kommande matcher "
+        f"({len(previews)} med analys) -> {OUT_DIR}"
     )
 
 

@@ -10,6 +10,27 @@ description: "Statistiska kuriositeter ur Allsvenskans historia sedan 1924: reko
      verifierade matcher.</p>
 </section>
 
+{% if daily.nextMatches.length %}
+<section class="card">
+  <p class="kicker">Närmast på tur</p>
+  <h2>Inför nästa matcher</h2>
+  {% for p in daily.nextMatches %}
+  <div class="next-match">
+    <p class="next-match-head">
+      <a href="/matcher/{{ p.slug }}/">{{ p.home }} – {{ p.away }}</a>
+      <span class="muted">{{ p.date_text }}{% if p.time %} kl. {{ p.time }}{% endif %} · {{ p.comp_name }}</span>
+    </p>
+    {% if p.facts.length %}
+    <ul class="facts">
+      {% for f in p.facts | slice_facts %}<li>{{ f.text }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <p><a href="/matcher/">Alla kommande matcher →</a></p>
+</section>
+{% endif %}
+
 <section class="card featured">
   <p class="kicker">Dagens kuriosa · {{ daily.pick.competition }}</p>
   <h2><a href="/kuriosa/{{ daily.pick.slug }}/">{{ daily.pick.title }}</a></h2>

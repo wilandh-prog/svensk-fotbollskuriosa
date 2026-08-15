@@ -1,0 +1,51 @@
+---
+layout: base.njk
+pagination:
+  data: generated.previews
+  size: 1
+  alias: p
+permalink: "/matcher/{{ p.slug }}/"
+eleventyComputed:
+  title: "{{ p.home }} – {{ p.away }}"
+  description: "{{ p.home }} möter {{ p.away }} i {{ p.comp_name }} den {{ p.date_text }}. Formsviter, inbördes möten och statistisk kuriosa inför matchen."
+---
+<article>
+  <p class="kicker"><a href="/matcher/">Kommande matcher</a> · {{ p.comp_name }}{% if p.round %} · omgång {{ p.round }}{% endif %}</p>
+  <h1>{{ p.home }} – {{ p.away }}</h1>
+  <p class="muted">{{ p.date_text }}{% if p.time %} kl. {{ p.time }}{% endif %}{% if p.arena %}, {{ p.arena }}{% endif %}</p>
+
+  <div class="matchup">
+    <div class="side">
+      <h2><a href="/klubbar/{{ p.home_slug }}/">{{ p.home }}</a></h2>
+      {% if p.home_standing %}
+      <p class="muted">{{ p.home_standing.position }}:a i tabellen ·
+         {{ p.home_standing.points }} p på {{ p.home_standing.played }} matcher ·
+         {{ p.home_standing.gf }}–{{ p.home_standing.ga }} i mål</p>
+      {% endif %}
+      {% if p.home_form %}<p>Senaste matcherna: <strong>{{ p.home_form }}</strong></p>{% endif %}
+    </div>
+    <div class="side">
+      <h2><a href="/klubbar/{{ p.away_slug }}/">{{ p.away }}</a></h2>
+      {% if p.away_standing %}
+      <p class="muted">{{ p.away_standing.position }}:a i tabellen ·
+         {{ p.away_standing.points }} p på {{ p.away_standing.played }} matcher ·
+         {{ p.away_standing.gf }}–{{ p.away_standing.ga }} i mål</p>
+      {% endif %}
+      {% if p.away_form %}<p>Senaste matcherna: <strong>{{ p.away_form }}</strong></p>{% endif %}
+    </div>
+  </div>
+
+  <h2>Inför mötet</h2>
+  {% if p.facts.length %}
+  <ul class="facts">
+    {% for f in p.facts %}<li>{{ f.text }}</li>{% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Inga utmärkande sviter eller mönster inför den här matchen.</p>
+  {% endif %}
+
+  <p class="coverage">Formsviter räknas på {{ p.comp_name }}-matcher med känt
+     datum; inbördes statistik bygger på seriens hela verifierade historik.
+     V = vinst, O = oavgjort, F = förlust, äldst först.
+     Se <a href="/om/">metod och källor</a>.</p>
+</article>

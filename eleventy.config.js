@@ -7,6 +7,8 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ "site/static": "/" });
 
   eleventyConfig.addFilter("seasonSlug", (label) => String(label).replace("/", "-"));
+  // front page teasers: a couple of facts per match, not the whole list
+  eleventyConfig.addFilter("slice_facts", (facts) => (facts || []).slice(0, 3));
   eleventyConfig.addFilter("nf", (n) => new Intl.NumberFormat("sv-SE").format(n));
   eleventyConfig.addFilter("svDate", (iso) => {
     if (!iso) return "";

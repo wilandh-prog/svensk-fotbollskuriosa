@@ -21,11 +21,11 @@ class Reconciliation:
     problems: list[str] = field(default_factory=list)
 
 
-def _stats(matches: list[MatrixMatch]) -> dict[str, dict]:
+def _stats(matches: list[MatrixMatch], ns: str = "herr") -> dict[str, dict]:
     st: dict[str, dict] = {}
     for m in matches:
-        h = canonical_name(m.home, m.home_link)
-        a = canonical_name(m.away, m.away_link)
+        h = canonical_name(m.home, m.home_link, ns)
+        a = canonical_name(m.away, m.away_link, ns)
         for name in (h, a):
             st.setdefault(name, {"p": 0, "w": 0, "d": 0, "l": 0, "gf": 0, "ga": 0})
         st[h]["p"] += 1; st[a]["p"] += 1
@@ -53,8 +53,9 @@ def reconcile(
     matches: list[MatrixMatch],
     missing: list[tuple[tuple[str, str | None], tuple[str, str | None]]],
     allow_derive: bool = True,
+    ns: str = "herr",
 ) -> Reconciliation:
-    tbl = {canonical_name(r.team, r.team_link): r for r in table}
+    tbl = {canonical_name(r.team, r.team_link, ns): r for r in table}
     matches = list(matches)
     derived: list[MatrixMatch] = []
 
@@ -65,8 +66,8 @@ def reconcile(
     if not allow_derive or len(missing) > 2:
         missing = []
     for (home, home_link), (away, away_link) in missing:
-        st = _stats(matches)
-        h, a = canonical_name(home, home_link), canonical_name(away, away_link)
+        st = _stats(matches, ns)
+        h, a = canonical_name(home, home_link, ns), canonical_name(away, away_link, ns)
         if h not in tbl or a not in tbl:
             continue
         sh = st.get(h, {"gf": 0, "ga": 0})
@@ -81,7 +82,7 @@ def reconcile(
         matches.append(m)
         derived.append(m)
 
-    st = _stats(matches)
+    st = _stats(matches, ns)
 
     # Detect awarded matches: every club's GF/GA and games played agree
     # with the table but W/D/L is off — a result was awarded by verdict
@@ -101,15 +102,15 @@ def reconcile(
 
         cand = [
             m for m in matches
-            if canonical_name(m.home, m.home_link) in wdl_clubs
-            and canonical_name(m.away, m.away_link) in wdl_clubs
+            if canonical_name(m.home, m.home_link, ns) in wdl_clubs
+            and canonical_name(m.away, m.away_link, ns) in wdl_clubs
         ]
         if 0 < len(cand) <= 4:
             options = [None, "H", "D", "A"]
             for combo in _product(options, repeat=len(cand)):
                 for m, o in zip(cand, combo):
                     m.awarded = o
-                trial = _stats(matches)
+                trial = _stats(matches, ns)
                 if all(
                     (trial[c]["w"], trial[c]["d"], trial[c]["l"])
                     == (tbl[c].won, tbl[c].drawn, tbl[c].lost)
@@ -120,7 +121,7 @@ def reconcile(
             else:
                 for m in cand:
                     m.awarded = None
-            st = _stats(matches)
+            st = _stats(matches, ns)
 
     notes: list[str] = []
     for m in matches:
@@ -157,8 +158,8 @@ def reconcile(
     )
 
 
-def _pair_key(m: MatrixMatch) -> tuple[str, str]:
-    return (canonical_name(m.home, m.home_link), canonical_name(m.away, m.away_link))
+def _pair_key(m: MatrixMatch, ns: str = "herr") -> tuple[str, str]:
+    return (canonical_name(m.home, m.home_link, ns), canonical_name(m.away, m.away_link, ns))
 
 
 def best_merge(
@@ -166,6 +167,7 @@ def best_merge(
     sv_matches: list[MatrixMatch],
     alt_matches: list[MatrixMatch],
     max_conflicts: int = 8,
+    ns: str = "herr",
 ) -> tuple[list[MatrixMatch], Reconciliation] | None:
     """Repair single-cell typos in the sv matrix using an independently
     edited alternate matrix (en.wikipedia). For each cell where the two
@@ -174,8 +176,8 @@ def best_merge(
     """
     from itertools import product
 
-    sv = {_pair_key(m): m for m in sv_matches}
-    alt = {_pair_key(m): m for m in alt_matches}
+    sv = {_pair_key(m, ns): m for m in sv_matches}
+    alt = {_pair_key(m, ns): m for m in alt_matches}
     conflicts = [
         k for k in sv
         if k in alt and (sv[k].home_goals, sv[k].away_goals) != (alt[k].home_goals, alt[k].away_goals)
@@ -190,7 +192,7 @@ def best_merge(
         trial = dict(base)
         for bit, k in zip(choice, conflicts):
             trial[k] = alt[k] if bit else sv[k]
-        rec = reconcile(table, list(trial.values()), [])
+        rec = reconcile(table, list(trial.values()), [], ns=ns)
         if rec.complete:
             return list(trial.values()), rec
     return None
