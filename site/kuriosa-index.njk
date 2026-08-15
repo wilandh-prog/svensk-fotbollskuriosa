@@ -1,16 +1,22 @@
 ---
 layout: base.njk
 title: "Alla kuriositeter"
-description: "Alla statistiska kuriositeter ur Allsvenskans historia, sorterade per kategori."
+description: "Alla statistiska kuriositeter ur Allsvenskan, Superettan och Damallsvenskan, sorterade per kategori."
 permalink: /kuriosa/
 ---
 <h1>Alla kuriositeter</h1>
+<p>{{ categories | length }} kategorier och {{ generated.curiosities.length }}
+   färdigräknade listor. Varje statistik finns för de serier där data räcker till.</p>
 {% for cat in categories %}
 <section>
   <h2><a href="/kategori/{{ cat.slug }}/">{{ cat.name }}</a></h2>
-  <ul>
-    {% for c in cat.curiosities %}
-    <li><a href="/kuriosa/{{ c.id }}/">{{ c.title }}</a> — {{ c.description }}</li>
+  <ul class="curiosity-list">
+    {% for c in cat.primary %}
+    <li>
+      <a href="/kuriosa/{{ c.slug }}/">{{ c.title }}</a>
+      <span class="comps">{{ c.competition }}{% for v in c.variants %} · <a href="/kuriosa/{{ v.slug }}/">{{ v.competition }}</a>{% endfor %}</span>
+      <br><span class="muted">{{ c.description }}</span>
+    </li>
     {% endfor %}
   </ul>
 </section>

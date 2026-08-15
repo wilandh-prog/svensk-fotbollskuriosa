@@ -11,10 +11,16 @@ eleventyComputed:
 ---
 <h1>{{ cat.name }}</h1>
 <p>{{ cat.description }}</p>
-{% for c in cat.curiosities %}
+{% for c in cat.primary %}
 <section class="card">
-  <h2><a href="/kuriosa/{{ c.id }}/">{{ c.title }}</a></h2>
+  <p class="kicker">{{ c.competition }}</p>
+  <h2><a href="/kuriosa/{{ c.slug }}/">{{ c.title }}</a></h2>
   <p>{{ c.description }}</p>
   {% include "ctable.njk" %}
+  {% if c.variants.length %}
+  <p class="variants">Samma statistik för
+    {% for v in c.variants %}<a href="/kuriosa/{{ v.slug }}/">{{ v.competition }}</a>{% if not loop.last %} · {% endif %}{% endfor %}.
+  </p>
+  {% endif %}
 </section>
 {% endfor %}

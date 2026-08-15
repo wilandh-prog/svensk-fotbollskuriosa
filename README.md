@@ -65,8 +65,10 @@ förklaring på säsongssidan.
 
 Herr- och damklubbar hålls i separata namnrymder i databasen så att t.ex.
 Hammarby IF (herr) och Hammarby IF (dam) aldrig blandas ihop trots samma namn.
-Kuriositetsmotorn är i nuläget avgränsad till Allsvenskan; Superettan och
-Damallsvenskan exponeras via säsongs- och klubbsidorna.
+Kuriositetsmotorn räknar fram **41 statistiktyper × alla serier där data
+räcker till = 108 färdiga listor**. Allsvenskan äger rot-URL:erna
+(`/kuriosa/<id>/`), övriga serier ligger under `/kuriosa/<serie>/<id>/`, och
+varianterna korslänkar till varandra.
 
 **Svenska cupen** ingår inte i lanseringen: cupen saknar sluttabeller att
 verifiera matchresultat emot, och Wikipedias cupartiklar har skiftande
@@ -136,7 +138,10 @@ Actions-körningen röd och **ingen data committas och ingen deploy sker**.
 
 1. Skriv en funktion i lämplig modul under `pipeline/curiosities/`
    (`tables.py` = tabellbaserad, `matches.py` = matchbaserad,
-   `dated.py` = kräver datum, `alltime.py` = flersäsongsaggregat):
+   `dated.py` = kräver datum, `alltime.py` = flersäsongsaggregat).
+   Funktionen tar `(conn, comp)` och ska scopa sin fråga med
+   `COMP_FILTER` och den namngivna parametern `:comp` — då räknas samma
+   statistik automatiskt fram för alla serier där data räcker till:
 
    ```python
    @curiosity(
@@ -146,9 +151,18 @@ Actions-körningen röd och **ingen data committas och ingen deploy sker**.
        "records",              # kategori: records|anomalies|streaks|derbies|seasons|clubs
        "tables",               # täckning: tables|matches|dated (styr underlagstexten)
    )
-   def min_kuriositet(conn):
-       return [dict(r) for r in conn.execute("SELECT ...").fetchall()]
+   def min_kuriositet(conn, comp):
+       rows = conn.execute(
+           f"SELECT ... FROM league_table lt "
+           f"JOIN season s ON s.id = lt.season_id WHERE {COMP_FILTER}",
+           {"comp": comp},
+       ).fetchall()
+       return [dict(r) for r in rows]
    ```
+
+   Behöver texten skilja sig mellan serier kan `description` vara en dict:
+   `{"allsvenskan": "...", "*": "fallback"}`. Ger frågan inga träffar för
+   en viss serie publiceras ingen tom sida — varianten hoppas över.
 
 2. Lägg till en presentationsspec i `PRESENTATIONS` i `pipeline/export.py`
    (kolumnrubriker + cellrenderare).

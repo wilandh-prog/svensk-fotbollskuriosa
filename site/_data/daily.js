@@ -14,6 +14,7 @@ export default function () {
     (c) => c.id !== "on-this-day" && (c.rows?.length || c.derbies?.length)
   );
   const pick = eligible[day % eligible.length];
+  // only Allsvenskan has per-match dates, so there is one such section
   const onThisDay = curiosities.find((c) => c.id === "on-this-day");
   return { pick, onThisDay };
 }

@@ -83,6 +83,13 @@ tr.gold td { background: var(--gold-bg); }
 tbody tr:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 
 .coverage { font-size: .84rem; color: var(--muted); }
+.variants { font-size: .88rem; }
+.comps { font-size: .8rem; color: var(--muted); }
+.curiosity-list { list-style: none; padding: 0; }
+.curiosity-list li {
+  padding: .5rem 0; border-bottom: 1px solid var(--border);
+}
+.curiosity-list li > a { font-weight: 600; }
 .muted { color: var(--muted); }
 .note {
   background: var(--gold-bg); border: 1px solid var(--accent-2);

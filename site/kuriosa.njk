@@ -4,16 +4,21 @@ pagination:
   data: generated.curiosities
   size: 1
   alias: c
-permalink: "/kuriosa/{{ c.id }}/"
+permalink: "/kuriosa/{{ c.slug }}/"
 eleventyComputed:
-  title: "{{ c.title }}"
+  title: "{{ c.title }} – {{ c.competition }}"
   description: "{{ c.description }} Underlag: {{ c.coverage }}."
 ---
 <article>
-  <p class="kicker"><a href="/kuriosa/">Kuriosa</a></p>
+  <p class="kicker"><a href="/kuriosa/">Kuriosa</a> · {{ c.competition }}</p>
   <h1>{{ c.title }}</h1>
   <p>{{ c.description }}</p>
   {% include "ctable.njk" %}
-  <p class="muted">Källor: sammanställt ur Wikipedias säsongsartiklar med
-     korsverifiering — se <a href="/om/">metod och källor</a>.</p>
+  {% if c.variants.length %}
+  <p class="variants">Samma statistik för
+    {% for v in c.variants %}<a href="/kuriosa/{{ v.slug }}/">{{ v.competition }}</a>{% if not loop.last %} · {% endif %}{% endfor %}.
+  </p>
+  {% endif %}
+  <p class="muted">Sammanställt ur Wikipedias säsongsartiklar med korsverifiering —
+     se <a href="/om/">metod och källor</a>.</p>
 </article>

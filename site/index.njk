@@ -11,8 +11,8 @@ description: "Statistiska kuriositeter ur Allsvenskans historia sedan 1924: reko
 </section>
 
 <section class="card featured">
-  <p class="kicker">Dagens kuriosa</p>
-  <h2><a href="/kuriosa/{{ daily.pick.id }}/">{{ daily.pick.title }}</a></h2>
+  <p class="kicker">Dagens kuriosa · {{ daily.pick.competition }}</p>
+  <h2><a href="/kuriosa/{{ daily.pick.slug }}/">{{ daily.pick.title }}</a></h2>
   <p>{{ daily.pick.description }}</p>
   {% set c = daily.pick %}
   {% include "ctable.njk" %}
@@ -27,12 +27,14 @@ description: "Statistiska kuriositeter ur Allsvenskans historia sedan 1924: reko
 
 <section>
   <h2>Utforska kuriosan</h2>
+  <p>{{ generated.curiosities.length }} färdigräknade listor över Allsvenskan,
+     Superettan och Damallsvenskan.</p>
   <div class="cat-grid">
     {% for cat in categories %}
     <a class="cat-card" href="/kategori/{{ cat.slug }}/">
       <h3>{{ cat.name }}</h3>
       <p>{{ cat.description }}</p>
-      <p class="muted">{{ cat.curiosities.length }} kuriositeter</p>
+      <p class="muted">{{ cat.count }} kuriositeter</p>
     </a>
     {% endfor %}
   </div>

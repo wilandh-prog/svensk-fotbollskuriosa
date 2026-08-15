@@ -1,15 +1,13 @@
 """Curiosity engine tests against independently known historical facts.
 
 These run against the real seeded database (data/svensk_fotboll.sqlite)
-and pin well-documented Allsvenskan history: if an ingest regression
-changes any of these answers, something is wrong with the data.
+and pin well-documented Swedish football history: if an ingest or query
+regression changes any of these answers, something is wrong.
 """
-import sqlite3
-
 import pytest
 
 from pipeline import db
-from pipeline.curiosities import REGISTRY, load_modules
+from pipeline.curiosities import COMPETITIONS, REGISTRY, compute_all, load_modules
 
 
 @pytest.fixture(scope="session")
@@ -20,13 +18,62 @@ def conn():
     c.close()
 
 
-def compute(conn, cid):
-    return REGISTRY[cid].compute(conn)["items"]
+@pytest.fixture(scope="session")
+def all_results(conn):
+    return compute_all(conn)
+
+
+def compute(conn, cid, comp="allsvenskan"):
+    result = REGISTRY[cid].compute(conn, comp)
+    assert result is not None, f"{cid} produced nothing for {comp}"
+    return result["items"]
+
+
+# --- engine ----------------------------------------------------------
 
 
 def test_registry_has_at_least_15_curiosities():
     load_modules()
     assert len(REGISTRY) >= 15
+
+
+def test_every_curiosity_computes_and_has_coverage(conn):
+    for cid, cur in REGISTRY.items():
+        for comp in COMPETITIONS:
+            result = cur.compute(conn, comp)
+            if result is None:
+                continue  # competition lacks the data this one needs
+            assert result["coverage"], cid
+            assert result["items"], cid
+            assert result["comp"] == comp
+
+
+def test_variants_cross_link_symmetrically(all_results):
+    by_key = {(r["id"], r["comp"]): r for r in all_results}
+    for (cid, comp), r in by_key.items():
+        for v in r["variants"]:
+            assert (cid, v["comp"]) in by_key
+            assert v["comp"] != comp
+            back = by_key[(cid, v["comp"])]["variants"]
+            assert any(b["comp"] == comp for b in back)
+
+
+def test_allsvenskan_owns_the_root_urls(all_results):
+    for r in all_results:
+        if r["comp"] == "allsvenskan":
+            assert r["slug"] == r["id"]
+        else:
+            assert r["slug"] == f"{r['comp']}/{r['id']}"
+
+
+def test_dated_curiosities_only_where_dates_exist(conn):
+    # only Allsvenskan has per-match dates ingested
+    assert REGISTRY["on-this-day"].compute(conn, "superettan") is None
+    assert REGISTRY["longest-unbeaten-runs"].compute(conn, "damallsvenskan") is None
+    assert REGISTRY["longest-unbeaten-runs"].compute(conn, "allsvenskan") is not None
+
+
+# --- Allsvenskan facts -----------------------------------------------
 
 
 def test_malmo_ff_unbeaten_1949_50_is_the_only_unbeaten_season(conn):
@@ -43,11 +90,9 @@ def test_billingsfors_winless_1946_47(conn):
 
 
 def test_malmo_ff_most_league_titles(conn):
-    items = compute(conn, "league-titles")
-    top = items[0]
+    top = compute(conn, "league-titles")[0]
     assert top["club"] == "Malmö FF"
-    # 25 first places through 2025 (seriesegrar, not SM titles):
-    # the count only ever grows, so >= protects against ingest regressions
+    # 25 first places through 2025; the count only grows
     assert top["titles"] >= 25
 
 
@@ -58,6 +103,7 @@ def test_ifk_goteborg_1982_won_regular_season(conn):
         JOIN season s ON s.id = lt.season_id
         JOIN club c ON c.id = lt.club_id
         WHERE s.label = '1982' AND lt.position = 1
+          AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         """
     ).fetchone()
     assert row["name"] == "IFK Göteborg"
@@ -70,6 +116,7 @@ def test_1982_ifk_goteborg_table_line(conn):
         JOIN season s ON s.id = lt.season_id
         JOIN club c ON c.id = lt.club_id
         WHERE s.label = '1982' AND c.name = 'IFK Göteborg'
+          AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         """
     ).fetchone()
     assert (row["played"], row["won"], row["drawn"], row["lost"]) == (22, 11, 7, 4)
@@ -104,9 +151,15 @@ def test_first_season_had_12_teams_132_matches(conn):
 
 
 def test_biggest_win_is_at_least_nine_goal_margin(conn):
-    items = compute(conn, "biggest-home-wins")
-    top = items[0]
+    top = compute(conn, "biggest-home-wins")[0]
     assert top["home_goals"] - top["away_goals"] >= 9
+
+
+def test_oster_won_allsvenskan_in_its_debut_season_1968(conn):
+    top = compute(conn, "best-debut-seasons")[0]
+    assert top["club"] == "Östers IF"
+    assert top["season"] == "1968"
+    assert top["position"] == 1
 
 
 def test_derby_stats_are_symmetric_and_nonempty(conn):
@@ -137,11 +190,68 @@ def test_ever_presents_leader_is_long_running_top_club(conn):
     assert items[0]["club"] in {"Malmö FF", "IFK Göteborg", "AIK"}
 
 
-def test_every_curiosity_computes_and_has_coverage(conn):
-    for cid, cur in REGISTRY.items():
-        result = cur.compute(conn)
-        assert result["coverage"].startswith("Allsvenskan"), cid
-        assert isinstance(result["items"], list), cid
+def test_position_swings_are_within_league_size(conn):
+    for cid in ("biggest-drop", "biggest-climb"):
+        for i in compute(conn, cid):
+            assert abs(i["change"]) < i["num_teams"]
+            assert 1 <= i["from_position"] and 1 <= i["to_position"]
+
+
+def test_gd_paradox_pairs_are_really_out_of_order(conn):
+    for i in compute(conn, "gd-paradox"):
+        assert i["pos_above"] < i["pos_below"]
+        assert i["gd_above"] < i["gd_below"]
+        assert i["pts_above"] >= i["pts_below"]
+
+
+# --- other competitions ----------------------------------------------
+
+
+def test_rosengard_dominates_damallsvenskan(conn):
+    top = compute(conn, "league-titles", "damallsvenskan")[0]
+    assert top["club"] == "FC Rosengård"
+    assert top["titles"] >= 13
+
+
+def test_umea_ik_won_damallsvenskan_2000_2002(conn):
+    umea = next(
+        i for i in compute(conn, "league-titles", "damallsvenskan")
+        if i["club"] == "Umeå IK FF"
+    )
+    for year in ("2000", "2001", "2002"):
+        assert year in umea["seasons"]
+
+
+def test_superettan_starts_in_2000(conn):
+    row = conn.execute(
+        """
+        SELECT MIN(label) AS first, COUNT(*) AS n FROM season
+        WHERE competition_id = (SELECT id FROM competition WHERE code = 'superettan')
+        """
+    ).fetchone()
+    assert row["first"] == "2000"
+    assert row["n"] >= 27
+
+
+def test_womens_and_mens_clubs_never_share_a_row(conn):
+    """Hammarby, AIK and Djurgården exist in both namespaces and must stay
+    two separate clubs with separate histories."""
+    for name in ("Hammarby IF", "AIK", "Djurgårdens IF"):
+        rows = conn.execute("SELECT ns FROM club WHERE name = ?", (name,)).fetchall()
+        assert {r["ns"] for r in rows} == {"herr", "dam"}, name
+    herr = conn.execute(
+        """
+        SELECT COUNT(*) AS c FROM league_table lt
+        JOIN club c ON c.id = lt.club_id
+        JOIN season s ON s.id = lt.season_id
+        WHERE c.name = 'Hammarby IF' AND c.ns = 'herr'
+          AND s.competition_id = (SELECT id FROM competition WHERE code = 'damallsvenskan')
+        """
+    ).fetchone()["c"]
+    assert herr == 0
+
+
+# --- data integrity ---------------------------------------------------
 
 
 def test_no_curiosity_uses_incomplete_match_seasons(conn):
@@ -155,3 +265,20 @@ def test_no_curiosity_uses_incomplete_match_seasons(conn):
         """
     ).fetchone()["c"]
     assert bad == 0
+
+
+def test_awarded_matches_are_counted_by_verdict_not_score(conn):
+    """The two known awarded matches must not be scored by goals alone."""
+    rows = conn.execute(
+        """
+        SELECT m.awarded_result, m.home_goals, m.away_goals
+        FROM match m WHERE m.awarded_result IS NOT NULL
+        """
+    ).fetchall()
+    assert len(rows) >= 1
+    for r in rows:
+        natural = (
+            "H" if r["home_goals"] > r["away_goals"]
+            else "A" if r["home_goals"] < r["away_goals"] else "D"
+        )
+        assert r["awarded_result"] != natural

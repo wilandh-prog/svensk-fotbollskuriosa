@@ -15,12 +15,12 @@ const META = {
   streaks: {
     slug: "sviter",
     name: "Sviter",
-    description: "Obesegrade sviter och förlustrader.",
+    description: "Obesegrade sviter, förlustrader och ointagliga hemmaplaner.",
   },
   derbies: {
     slug: "derbyn",
     name: "Derbyn",
-    description: "Inbördes möten i de klassiska rivaliteterna.",
+    description: "Inbördes möten och långa uppehåll i de klassiska rivaliteterna.",
   },
   seasons: {
     slug: "sasonger",
@@ -34,14 +34,30 @@ const META = {
   },
 };
 
+const COMP_ORDER = ["allsvenskan", "superettan", "damallsvenskan"];
+
 export default function () {
   const dir = path.join(process.cwd(), "site", "_data", "generated");
   const curiosities = JSON.parse(
     fs.readFileSync(path.join(dir, "curiosities.json"), "utf-8")
   );
-  return Object.entries(META).map(([key, m]) => ({
-    key,
-    ...m,
-    curiosities: curiosities.filter((c) => c.category === key),
-  }));
+
+  return Object.entries(META).map(([key, m]) => {
+    const inCategory = curiosities.filter((c) => c.category === key);
+    // one entry per statistic: the primary competition's variant carries
+    // the table, the others are offered as links
+    const seen = new Map();
+    for (const comp of COMP_ORDER) {
+      for (const c of inCategory.filter((x) => x.comp === comp)) {
+        if (!seen.has(c.id)) seen.set(c.id, c);
+      }
+    }
+    return {
+      key,
+      ...m,
+      primary: [...seen.values()],
+      count: seen.size,
+      variantCount: inCategory.length,
+    };
+  });
 }
