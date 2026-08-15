@@ -93,7 +93,7 @@ Miljövariabler (behövs bara för korrekt kanonisk URL i produktion):
 
 | Variabel | Exempel | Sätts av |
 |---|---|---|
-| `SITE_URL` | `https://USER.github.io/REPO` | workflowen |
+| `SITE_URL` | `https://wilandh-prog.github.io/svensk-fotbollskuriosa` | workflowen |
 | `PATH_PREFIX` | `/REPO/` | workflowen |
 
 ## Daglig uppdatering: cron-job.org → GitHub Actions
@@ -113,7 +113,7 @@ Repo → Settings → Pages → **Source: GitHub Actions**.
 
 | Fält | Värde |
 |---|---|
-| URL | `https://api.github.com/repos/OWNER/REPO/actions/workflows/update.yml/dispatches` |
+| URL | `https://api.github.com/repos/wilandh-prog/svensk-fotbollskuriosa/actions/workflows/update.yml/dispatches` |
 | Metod | `POST` |
 | Schema | Dagligen, t.ex. 06:00 (Europe/Stockholm) |
 | Body (raw, JSON) | `{"ref":"main"}` |

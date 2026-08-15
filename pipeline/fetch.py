@@ -20,7 +20,8 @@ ROOT = Path(__file__).resolve().parent.parent
 CACHE_DIR = ROOT / "cache"
 
 USER_AGENT = (
-    "SvenskFotbollskuriosa/1.0 (https://github.com/USER/swesite; wilandh@gmail.com) "
+    "SvenskFotbollskuriosa/1.0 "
+    "(https://github.com/wilandh-prog/svensk-fotbollskuriosa; wilandh@gmail.com) "
     "requests"
 )
 
