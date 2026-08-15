@@ -181,3 +181,61 @@ def test_form_history_never_spans_a_gap_in_dated_seasons(conn):
             ).fetchone()["has_dates"]
             for sid in ids
         )
+
+
+def test_head_to_head_counts_every_played_meeting(conn, previews):
+    """Regression: the season being played must not be filtered out.
+
+    match_data_complete only turns true once a whole season reconciles
+    with its final table, so requiring it silently dropped every result
+    from the current season.
+    """
+    for p in previews:
+        row = conn.execute(
+            """
+            SELECT COUNT(*) AS c FROM match m
+            JOIN season s ON s.id = m.season_id
+            JOIN competition comp ON comp.id = s.competition_id AND comp.code = :comp
+            JOIN club h ON h.id = m.home_club_id
+            JOIN club a ON a.id = m.away_club_id
+            WHERE (s.match_data_complete = 1 OR s.is_current = 1)
+              AND ((h.name = :home AND a.name = :away)
+                OR (h.name = :away AND a.name = :home))
+            """,
+            {"comp": p["comp"], "home": p["home"], "away": p["away"]},
+        ).fetchone()
+        assert p["h2h"]["played"] == row["c"], f"{p['home']}–{p['away']}"
+
+
+def test_current_season_matches_are_visible_to_previews(conn):
+    """At least one current-season result must reach the preview layer."""
+    current = conn.execute(
+        """
+        SELECT COUNT(*) AS c FROM match m
+        JOIN season s ON s.id = m.season_id
+        WHERE s.is_current = 1
+        """
+    ).fetchone()["c"]
+    if current == 0:
+        pytest.skip("ingen pågående säsong med spelade matcher")
+    from pipeline.previews import _team_history
+
+    club = conn.execute(
+        """
+        SELECT m.home_club_id AS id, comp.code AS comp
+        FROM match m
+        JOIN season s ON s.id = m.season_id AND s.is_current = 1
+        JOIN competition comp ON comp.id = s.competition_id
+        LIMIT 1
+        """
+    ).fetchone()
+    history = _team_history(conn, club["id"], club["comp"])
+    current_label = conn.execute(
+        """
+        SELECT label FROM season s
+        JOIN competition comp ON comp.id = s.competition_id AND comp.code = ?
+        WHERE s.is_current = 1
+        """,
+        (club["comp"],),
+    ).fetchone()["label"]
+    assert any(m["season"] == current_label for m in history)

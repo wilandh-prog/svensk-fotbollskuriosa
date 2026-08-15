@@ -25,10 +25,18 @@ COMPETITIONS = ["allsvenskan", "superettan", "damallsvenskan"]
 # SQL fragment every query uses to scope itself to one competition
 COMP_FILTER = "s.competition_id = (SELECT id FROM competition WHERE code = :comp)"
 
+# Individual results are trustworthy as soon as they are ingested; the
+# match_data_complete flag says the *whole season* reconciles with its
+# final table, which a season in progress can never satisfy. Anything
+# reasoning about single matches must therefore include the live season,
+# while whole-season aggregates must still exclude it.
+TRUSTED_MATCHES = "(s.match_data_complete = 1 OR s.is_current = 1)"
+
 # coverage kinds -> extra SQL filter over season
 _COVERAGE_WHERE = {
     "tables": "1=1",
-    "matches": "match_data_complete = 1",
+    "matches": "(match_data_complete = 1 OR is_current = 1)",
+    "season-matches": "match_data_complete = 1 AND is_current = 0",
     "dated": "has_dates = 1",
 }
 

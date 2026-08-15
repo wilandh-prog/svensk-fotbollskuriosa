@@ -340,7 +340,8 @@ def export_clubs(conn: sqlite3.Connection) -> list[dict]:
                    h.name AS home, a.name AS away,
                    m.home_goals, m.away_goals, m.date
             FROM match m
-            JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+            JOIN season s ON s.id = m.season_id
+                AND (s.match_data_complete = 1 OR s.is_current = 1)
             JOIN competition comp ON comp.id = s.competition_id
             JOIN club h ON h.id = m.home_club_id
             JOIN club a ON a.id = m.away_club_id
@@ -358,7 +359,8 @@ def export_clubs(conn: sqlite3.Connection) -> list[dict]:
                    h.name AS home, a.name AS away,
                    m.home_goals, m.away_goals, m.date
             FROM match m
-            JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+            JOIN season s ON s.id = m.season_id
+                AND (s.match_data_complete = 1 OR s.is_current = 1)
             JOIN competition comp ON comp.id = s.competition_id
             JOIN club h ON h.id = m.home_club_id
             JOIN club a ON a.id = m.away_club_id

@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import sqlite3
 
-from . import COMP_FILTER, curiosity
+from . import COMP_FILTER, TRUSTED_MATCHES, curiosity
 
 BASE = f"""
 SELECT s.label AS season, s.start_year, m.date,
        h.name AS home, a.name AS away, m.home_goals, m.away_goals
 FROM match m
-JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+JOIN season s ON s.id = m.season_id AND {TRUSTED_MATCHES}
 JOIN club h ON h.id = m.home_club_id
 JOIN club a ON a.id = m.away_club_id
 WHERE {COMP_FILTER}
@@ -99,7 +99,7 @@ def double_beatings(conn, comp):
         JOIN match m2 ON m2.season_id = m1.season_id
                      AND m2.home_club_id = m1.away_club_id
                      AND m2.away_club_id = m1.home_club_id
-        JOIN season s ON s.id = m1.season_id AND s.match_data_complete = 1
+        JOIN season s ON s.id = m1.season_id AND {TRUSTED_MATCHES}
         JOIN club w ON w.id = m1.home_club_id
         JOIN club l ON l.id = m1.away_club_id
         WHERE {COMP_FILTER}
@@ -129,7 +129,7 @@ def identical_double(conn, comp):
         JOIN match m2 ON m2.season_id = m1.season_id
                      AND m2.home_club_id = m1.away_club_id
                      AND m2.away_club_id = m1.home_club_id
-        JOIN season s ON s.id = m1.season_id AND s.match_data_complete = 1
+        JOIN season s ON s.id = m1.season_id AND {TRUSTED_MATCHES}
         JOIN club h ON h.id = m1.home_club_id
         JOIN club a ON a.id = m1.away_club_id
         WHERE {COMP_FILTER}
@@ -146,7 +146,7 @@ def identical_double(conn, comp):
     "Ointagliga hemmaborgar",
     "Lag som vann samtliga hemmamatcher under en säsong.",
     "records",
-    "matches",
+    "season-matches",
 )
 def home_fortresses(conn, comp):
     return _q(
@@ -171,7 +171,7 @@ def home_fortresses(conn, comp):
     "Obesegrade på hemmaplan",
     "Lag som gick genom en hel säsong utan att förlora en enda hemmamatch.",
     "streaks",
-    "matches",
+    "season-matches",
 )
 def unbeaten_at_home(conn, comp):
     return _q(
@@ -198,7 +198,7 @@ def unbeaten_at_home(conn, comp):
     "Bortaresans fasor",
     "Lag som förlorade samtliga bortamatcher under en säsong.",
     "anomalies",
-    "matches",
+    "season-matches",
 )
 def away_disasters(conn, comp):
     return _q(
@@ -224,7 +224,7 @@ def away_disasters(conn, comp):
     "Lag som inte lyckades vinna en enda match på bortaplan under hela säsongen "
     "— men ändå inte nödvändigtvis förlorade alla.",
     "anomalies",
-    "matches",
+    "season-matches",
 )
 def winless_away(conn, comp):
     return _q(
@@ -251,7 +251,7 @@ def winless_away(conn, comp):
     "Mållöshetens mästare",
     "Lagen som samlade flest mållösa 0–0-matcher under en och samma säsong.",
     "anomalies",
-    "matches",
+    "season-matches",
 )
 def goalless_kings(conn, comp):
     return _q(
@@ -313,7 +313,7 @@ def _derby_stats(conn: sqlite3.Connection, comp: str, clubs: list[str]) -> list[
                SUM({RESULT} = 'A') AS away_wins,
                SUM(m.home_goals) AS home_goals, SUM(m.away_goals) AS away_goals
         FROM match m
-        JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+        JOIN season s ON s.id = m.season_id AND {TRUSTED_MATCHES}
         JOIN club h ON h.id = m.home_club_id
         JOIN club a ON a.id = m.away_club_id
         WHERE {COMP_FILTER}
@@ -359,7 +359,7 @@ def derby_droughts(conn, comp):
                     f"""
                     SELECT DISTINCT s.start_year AS y, s.label AS label
                     FROM match m
-                    JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+                    JOIN season s ON s.id = m.season_id AND {TRUSTED_MATCHES}
                     JOIN club h ON h.id = m.home_club_id
                     JOIN club aw ON aw.id = m.away_club_id
                     WHERE {COMP_FILTER}

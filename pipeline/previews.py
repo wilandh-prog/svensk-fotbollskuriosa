@@ -22,6 +22,11 @@ _RESULT_CASE = """
          ELSE 'D' END
 """
 
+# Individual results count as soon as they are played; match_data_complete
+# only becomes true when a whole season reconciles with its final table,
+# so requiring it here would silently drop the season being played.
+_TRUSTED = "(s.match_data_complete = 1 OR s.is_current = 1)"
+
 
 def upcoming_fixtures(conn: sqlite3.Connection, days: int = PREVIEW_WINDOW_DAYS) -> list[dict]:
     today = dt.date.today()
@@ -248,7 +253,7 @@ def head_to_head(conn: sqlite3.Connection, home_id: int, away_id: int, comp: str
         SELECT m.date, s.label AS season, m.home_club_id, m.away_club_id,
                m.home_goals, m.away_goals, {_RESULT_CASE} AS result
         FROM match m
-        JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+        JOIN season s ON s.id = m.season_id AND {_TRUSTED}
         JOIN competition comp ON comp.id = s.competition_id AND comp.code = :comp
         WHERE (m.home_club_id = :h AND m.away_club_id = :a)
            OR (m.home_club_id = :a AND m.away_club_id = :h)
@@ -307,12 +312,19 @@ def h2h_facts(h2h: dict, home: str, away: str, home_id: int, away_id: int, comp_
     last = meetings[-1]
     first_team, second_team = (home, away) if last["home_is_first"] else (away, home)
     when = _sv_date(last["date"]) if last["date"] else f"säsongen {last['season']}"
-    score = f"{last['home_goals']}–{last['away_goals']}"
     if last["winner"] is None:
-        text = f"Senast lagen möttes ({when}) slutade det {score}."
+        text = (
+            f"Senast lagen möttes ({when}) slutade det "
+            f"{last['home_goals']}–{last['away_goals']}."
+        )
     else:
-        winner = first_team if last["home_goals"] > last["away_goals"] else second_team
-        text = f"Senast lagen möttes ({when}) vann {winner} med {score}."
+        # state the score from the winner's side, not the home team's
+        if last["home_goals"] > last["away_goals"]:
+            winner, wg, lg = first_team, last["home_goals"], last["away_goals"]
+        else:
+            winner, wg, lg = second_team, last["away_goals"], last["home_goals"]
+        where = "hemma" if winner == first_team else "borta"
+        text = f"Senast lagen möttes ({when}) vann {winner} med {wg}–{lg} {where}."
     facts.append({"kind": "last-meeting", "team": None, "value": 0, "text": text})
 
     for club_id, name, other in ((home_id, home, away), (away_id, away, home)):

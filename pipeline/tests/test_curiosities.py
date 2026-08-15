@@ -293,3 +293,21 @@ def test_awarded_matches_are_counted_by_verdict_not_score(conn):
             else "A" if r["home_goals"] < r["away_goals"] else "D"
         )
         assert r["awarded_result"] != natural
+
+
+def test_match_records_include_the_running_season(conn):
+    """Individual-match records must count the season in progress, while
+    whole-season aggregates must still exclude it."""
+    from pipeline.curiosities import coverage_seasons
+
+    current = conn.execute(
+        """
+        SELECT label FROM season
+        WHERE is_current = 1
+          AND competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
+        """
+    ).fetchone()
+    if current is None:
+        pytest.skip("ingen pågående säsong")
+    assert current["label"] in coverage_seasons(conn, "matches", "allsvenskan")
+    assert current["label"] not in coverage_seasons(conn, "season-matches", "allsvenskan")
