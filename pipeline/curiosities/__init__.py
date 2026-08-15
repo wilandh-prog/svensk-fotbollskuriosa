@@ -21,15 +21,18 @@ _COVERAGE_WHERE = {
 }
 
 
+ALLSV = "competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')"
+
+
 def resolve_coverage(conn: sqlite3.Connection, kind: str) -> str:
     where = _COVERAGE_WHERE[kind]
     rows = conn.execute(
-        f"SELECT label FROM season WHERE {where} ORDER BY start_year, label"
+        f"SELECT label FROM season WHERE {where} AND {ALLSV} ORDER BY start_year, label"
     ).fetchall()
     labels = [r["label"] for r in rows]
     if not labels:
         return "ingen data"
-    total = conn.execute("SELECT COUNT(*) AS n FROM season").fetchone()["n"]
+    total = conn.execute(f"SELECT COUNT(*) AS n FROM season WHERE {ALLSV}").fetchone()["n"]
     span = f"Allsvenskan {labels[0]}–{labels[-1]}"
     if len(labels) < total:
         span += f" ({len(labels)} säsonger med tillräcklig data)"

@@ -10,7 +10,7 @@ BASE = """
 SELECT s.label AS season, s.start_year, m.date,
        h.name AS home, a.name AS away, m.home_goals, m.away_goals
 FROM match m
-JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
 JOIN club h ON h.id = m.home_club_id
 JOIN club a ON a.id = m.away_club_id
 """
@@ -79,7 +79,7 @@ def double_beatings(conn):
         JOIN match m2 ON m2.season_id = m1.season_id
                      AND m2.home_club_id = m1.away_club_id
                      AND m2.away_club_id = m1.home_club_id
-        JOIN season s ON s.id = m1.season_id AND s.match_data_complete = 1
+        JOIN season s ON s.id = m1.season_id AND s.match_data_complete = 1 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club w ON w.id = m1.home_club_id
         JOIN club l ON l.id = m1.away_club_id
         WHERE m1.home_goals - m1.away_goals >= 4
@@ -108,7 +108,7 @@ def _derby_stats(conn: sqlite3.Connection, clubs: list[str]) -> list[dict]:
                SUM(m.home_goals < m.away_goals) AS away_wins,
                SUM(m.home_goals) AS home_goals, SUM(m.away_goals) AS away_goals
         FROM match m
-        JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+        JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club h ON h.id = m.home_club_id
         JOIN club a ON a.id = m.away_club_id
         WHERE h.name IN ({placeholders}) AND a.name IN ({placeholders})
@@ -148,7 +148,7 @@ def home_fortresses(conn):
                COUNT(*) AS home_games,
                SUM(m.home_goals) AS gf, SUM(m.away_goals) AS ga
         FROM match m
-        JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1 AND s.is_current = 0
+        JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan') AND s.is_current = 0
         JOIN club h ON h.id = m.home_club_id
         GROUP BY s.id, m.home_club_id
         HAVING SUM(m.home_goals <= m.away_goals) = 0
@@ -172,7 +172,7 @@ def away_disasters(conn):
                COUNT(*) AS away_games,
                SUM(m.away_goals) AS gf, SUM(m.home_goals) AS ga
         FROM match m
-        JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1 AND s.is_current = 0
+        JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan') AND s.is_current = 0
         JOIN club a ON a.id = m.away_club_id
         GROUP BY s.id, m.away_club_id
         HAVING SUM(m.away_goals >= m.home_goals) = 0
@@ -199,7 +199,7 @@ def identical_double(conn):
         JOIN match m2 ON m2.season_id = m1.season_id
                      AND m2.home_club_id = m1.away_club_id
                      AND m2.away_club_id = m1.home_club_id
-        JOIN season s ON s.id = m1.season_id AND s.match_data_complete = 1
+        JOIN season s ON s.id = m1.season_id AND s.match_data_complete = 1 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club h ON h.id = m1.home_club_id
         JOIN club a ON a.id = m1.away_club_id
         WHERE m1.home_goals = m2.home_goals AND m1.away_goals = m2.away_goals

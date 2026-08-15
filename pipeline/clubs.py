@@ -46,6 +46,20 @@ ALIASES: dict[str, str] = {
     "malmö ff (herrfotboll)": "Malmö FF",
     "varbergs bois": "Varbergs BoIS FC",
     "varberg": "Varbergs BoIS FC",
+    # women's clubs (kept apart from the men's clubs by the ns column,
+    # so short display names are safe): article renames folded together
+    "aik fotboll damer": "AIK",
+    "djurgårdens if dam": "Djurgårdens IF",
+    "djurgårdens if damfotbollsförening": "Djurgårdens IF",
+    "hammarby fotboll (damer)": "Hammarby IF",
+    "hammarby if dff": "Hammarby IF",
+    "hammarby if fotboll (damer)": "Hammarby IF",
+    "if brommapojkarna (damer)": "IF Brommapojkarna",
+    "if limhamn bunkeflo (damer)": "IF Limhamn Bunkeflo",
+    "fc rosengård (damfotboll)": "FC Rosengård",
+    "linköping fc": "Linköpings FC",
+    "kopparbergs/göteborg fc": "BK Häcken FF",
+    "kristianstad/wä dff": "Kristianstads DFF",
     "ifk norrköping (herrfotboll)": "IFK Norrköping",
 }
 

@@ -52,13 +52,18 @@ def reconcile(
     table: list[TableRow],
     matches: list[MatrixMatch],
     missing: list[tuple[tuple[str, str | None], tuple[str, str | None]]],
+    allow_derive: bool = True,
 ) -> Reconciliation:
     tbl = {canonical_name(r.team, r.team_link): r for r in table}
     matches = list(matches)
     derived: list[MatrixMatch] = []
 
     # Try to derive each missing cell: the table totals minus the matrix
-    # sums for the two clubs pin down the score exactly.
+    # sums for the two clubs pin down the score exactly. Only safe when
+    # almost nothing is missing — with many empty cells (a season in
+    # progress) the residuals would cascade into fabricated scores.
+    if not allow_derive or len(missing) > 2:
+        missing = []
     for (home, home_link), (away, away_link) in missing:
         st = _stats(matches)
         h, a = canonical_name(home, home_link), canonical_name(away, away_link)

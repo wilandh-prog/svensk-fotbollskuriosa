@@ -222,6 +222,11 @@ def export_curiosities(conn: sqlite3.Connection) -> list[dict]:
     return [_present(c) for c in compute_all(conn)]
 
 
+def season_slug(comp_code: str, label: str) -> str:
+    slug = label.replace("/", "-")
+    return slug if comp_code == "allsvenskan" else f"{comp_code}-{slug}"
+
+
 def export_clubs(conn: sqlite3.Connection) -> list[dict]:
     clubs = []
     for c in conn.execute("SELECT * FROM club ORDER BY name").fetchall():
@@ -231,9 +236,10 @@ def export_clubs(conn: sqlite3.Connection) -> list[dict]:
                 """
                 SELECT s.label AS season, s.start_year, lt.position, s.num_teams,
                        lt.played, lt.won, lt.drawn, lt.lost, lt.gf, lt.ga, lt.points,
-                       s.is_current
+                       s.is_current, comp.code AS comp, comp.name AS comp_name
                 FROM league_table lt
                 JOIN season s ON s.id = lt.season_id
+                JOIN competition comp ON comp.id = s.competition_id
                 WHERE lt.club_id = ?
                 ORDER BY s.start_year, s.label
                 """,
@@ -242,15 +248,22 @@ def export_clubs(conn: sqlite3.Connection) -> list[dict]:
         ]
         if not seasons:
             continue
+        for s in seasons:
+            s["slug"] = season_slug(s["comp"], s["season"])
         finished = [s for s in seasons if not s["is_current"]]
-        titles = [s["season"] for s in finished if s["position"] == 1]
-        best = min(finished, key=lambda s: s["position"], default=None)
+        top_flight = [
+            s for s in finished if s["comp"] in ("allsvenskan", "damallsvenskan")
+        ]
+        titles = [s["season"] for s in top_flight if s["position"] == 1]
+        best = min(top_flight, key=lambda s: s["position"], default=None)
         biggest_win = conn.execute(
             """
-            SELECT s.label AS season, h.name AS home, a.name AS away,
+            SELECT s.label AS season, comp.name AS comp_name,
+                   h.name AS home, a.name AS away,
                    m.home_goals, m.away_goals, m.date
             FROM match m
             JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+            JOIN competition comp ON comp.id = s.competition_id
             JOIN club h ON h.id = m.home_club_id
             JOIN club a ON a.id = m.away_club_id
             WHERE (m.home_club_id = ? AND m.home_goals > m.away_goals)
@@ -263,10 +276,12 @@ def export_clubs(conn: sqlite3.Connection) -> list[dict]:
         ).fetchone()
         worst_loss = conn.execute(
             """
-            SELECT s.label AS season, h.name AS home, a.name AS away,
+            SELECT s.label AS season, comp.name AS comp_name,
+                   h.name AS home, a.name AS away,
                    m.home_goals, m.away_goals, m.date
             FROM match m
             JOIN season s ON s.id = m.season_id AND s.match_data_complete = 1
+            JOIN competition comp ON comp.id = s.competition_id
             JOIN club h ON h.id = m.home_club_id
             JOIN club a ON a.id = m.away_club_id
             WHERE (m.home_club_id = ? AND m.home_goals < m.away_goals)
@@ -278,7 +293,7 @@ def export_clubs(conn: sqlite3.Connection) -> list[dict]:
             (c["id"], c["id"]),
         ).fetchone()
         totals = {
-            "seasons": len(finished),
+            "seasons": len(top_flight),
             "played": sum(s["played"] for s in finished),
             "won": sum(s["won"] for s in finished),
             "drawn": sum(s["drawn"] for s in finished),
@@ -286,15 +301,25 @@ def export_clubs(conn: sqlite3.Connection) -> list[dict]:
             "gf": sum(s["gf"] for s in finished),
             "ga": sum(s["ga"] for s in finished),
         }
+        comp_order = ["allsvenskan", "damallsvenskan", "superettan"]
+        competitions = []
+        for code in comp_order:
+            cs = [s for s in seasons if s["comp"] == code]
+            if cs:
+                competitions.append(
+                    {"code": code, "name": cs[0]["comp_name"], "seasons": cs}
+                )
         clubs.append(
             {
                 "name": c["name"],
-                "slug": slugify(c["name"]),
+                "ns": c["ns"],
+                "slug": slugify(c["name"]) + ("-dam" if c["ns"] == "dam" else ""),
                 "wiki_page": c["wiki_page"],
-                "seasons": seasons,
+                "competitions": competitions,
+                "top_flight_name": "Damallsvenskan" if c["ns"] == "dam" else "Allsvenskan",
                 "titles": titles,
                 "best_position": best["position"] if best else None,
-                "best_seasons": [s["season"] for s in finished if best and s["position"] == best["position"]],
+                "best_seasons": [s["season"] for s in top_flight if best and s["position"] == best["position"]],
                 "biggest_win": dict(biggest_win) if biggest_win else None,
                 "worst_loss": dict(worst_loss) if worst_loss else None,
                 "totals": totals,
@@ -305,7 +330,13 @@ def export_clubs(conn: sqlite3.Connection) -> list[dict]:
 
 def export_seasons(conn: sqlite3.Connection) -> list[dict]:
     out = []
-    for s in conn.execute("SELECT * FROM season ORDER BY start_year, label").fetchall():
+    for s in conn.execute(
+        """
+        SELECT s.*, comp.code AS comp, comp.name AS comp_name
+        FROM season s JOIN competition comp ON comp.id = s.competition_id
+        ORDER BY comp.code, s.start_year, s.label
+        """
+    ).fetchall():
         table = [
             dict(r)
             for r in conn.execute(
@@ -321,6 +352,9 @@ def export_seasons(conn: sqlite3.Connection) -> list[dict]:
         out.append(
             {
                 "label": s["label"],
+                "comp": s["comp"],
+                "comp_name": s["comp_name"],
+                "slug": season_slug(s["comp"], s["label"]),
                 "start_year": s["start_year"],
                 "end_year": s["end_year"],
                 "num_teams": s["num_teams"],
@@ -348,11 +382,24 @@ def run(conn: sqlite3.Connection) -> None:
         "complete_match_seasons": sum(1 for s in seasons if s["match_data_complete"]),
         "match_count": conn.execute("SELECT COUNT(*) c FROM match").fetchone()["c"],
         "club_count": len(clubs),
+        "competitions": [
+            {
+                "code": code,
+                "name": next(s["comp_name"] for s in seasons if s["comp"] == code),
+                "seasons": sum(1 for s in seasons if s["comp"] == code),
+                "complete": sum(
+                    1 for s in seasons if s["comp"] == code and s["match_data_complete"]
+                ),
+            }
+            for code in ["allsvenskan", "superettan", "damallsvenskan"]
+            if any(s["comp"] == code for s in seasons)
+        ],
         "sources": [
             {
                 "name": "Svenska Wikipedia – säsongsartiklar",
                 "url": "https://sv.wikipedia.org/wiki/Fotbollsallsvenskan",
-                "role": "Tabeller och resultatmatriser 1924/25–idag (CC BY-SA 4.0)",
+                "role": "Tabeller och resultatmatriser: Allsvenskan 1924/25–idag, "
+                        "Superettan 2000–idag, Damallsvenskan 1988–idag (CC BY-SA 4.0)",
             },
             {
                 "name": "Engelska Wikipedia – säsongsartiklar",

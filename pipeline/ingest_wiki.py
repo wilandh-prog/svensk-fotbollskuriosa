@@ -1,41 +1,75 @@
-"""Ingest all Allsvenskan seasons from Swedish Wikipedia.
+"""Ingest league seasons from Swedish Wikipedia.
 
-Season list comes from the navigation template "Fotbollsallsvenskan
-genom tiderna" (so new seasons appear automatically). Every season
-article provides the published league table; the home×away results
-matrix provides individual match results (without dates).
+Season lists come from the per-league navigation templates ("... genom
+tiderna"), so new seasons appear automatically. Every season article
+provides the published league table; the home×away results matrix gives
+individual match results (without dates). English Wikipedia is used to
+repair single-cell disagreements — see reconcile.py.
 """
 from __future__ import annotations
 
 import datetime as dt
 import re
 import sqlite3
+from dataclasses import dataclass
 
 from . import db
-from .clubs import canonical_name  # noqa: F401  (used in ingest_season)
+from .clubs import canonical_name
 from .fetch import FetchError, wiki_rendered_html
 from .reconcile import best_merge, reconcile
 from .wikiparse import parse_league_table, parse_result_matrix
 
-SEASON_LIST_TEMPLATE = "Mall:Fotbollsallsvenskan genom tiderna"
 DAY_S = 24 * 3600
 
 
-def allsvenskan_season_pages() -> list[str]:
-    html = wiki_rendered_html(SEASON_LIST_TEMPLATE, max_age_s=7 * DAY_S)
-    pages = re.findall(r'title="(Fotbollsallsvenskan [0-9/]+)"', html)
+@dataclass(frozen=True)
+class Competition:
+    code: str
+    name: str
+    nav_template: str
+    title_prefix: str  # season articles: "<prefix> <label>"
+    ns: str  # club namespace: herr / dam
+    en_suffix: str | None  # english articles: "<label> <suffix>"
+    min_seasons: int  # sanity floor for the season list
+
+
+COMPETITIONS = [
+    Competition(
+        "allsvenskan", "Allsvenskan",
+        "Mall:Fotbollsallsvenskan genom tiderna", "Fotbollsallsvenskan",
+        "herr", "Allsvenskan", 100,
+    ),
+    Competition(
+        "superettan", "Superettan",
+        "Mall:Superettan genom tiderna", "Superettan",
+        "herr", "Superettan", 25,
+    ),
+    Competition(
+        "damallsvenskan", "Damallsvenskan",
+        "Mall:Damallsvenskan genom tiderna", "Damallsvenskan",
+        "dam", "Damallsvenskan", 35,
+    ),
+]
+
+
+def season_pages(comp: Competition) -> list[str]:
+    html = wiki_rendered_html(comp.nav_template, max_age_s=7 * DAY_S)
+    pattern = rf'title="({re.escape(comp.title_prefix)} \d{{4}}(?:/\d{{4}})?)"'
+    pages = re.findall(pattern, html)
     seen: list[str] = []
     for p in pages:
         if p not in seen:
             seen.append(p)
-    if len(seen) < 100:
-        raise RuntimeError(f"expected >=100 Allsvenskan seasons, found {len(seen)}")
+    if len(seen) < comp.min_seasons:
+        raise RuntimeError(
+            f"{comp.code}: expected >={comp.min_seasons} seasons, found {len(seen)}"
+        )
     return seen
 
 
-def season_years(page: str) -> tuple[str, int, int]:
+def season_years(page: str, prefix: str) -> tuple[str, int, int]:
     """'Fotbollsallsvenskan 1924/1925' -> ('1924/1925', 1924, 1925)."""
-    label = page.split(" ", 1)[1]
+    label = page[len(prefix):].strip()
     if "/" in label:
         a, b = label.split("/")
         return label, int(a), int(b)
@@ -43,33 +77,35 @@ def season_years(page: str) -> tuple[str, int, int]:
     return label, y, y
 
 
-def en_page_title(label: str) -> str:
+def en_page_title(comp: Competition, label: str) -> str:
     """'1943/1944' -> '1943–44 Allsvenskan'; '2008' -> '2008 Allsvenskan'."""
     if "/" in label:
         a, b = label.split("/")
-        return f"{a}–{b[2:]} Allsvenskan"
-    return f"{label} Allsvenskan"
+        return f"{a}–{b[2:]} {comp.en_suffix}"
+    return f"{label} {comp.en_suffix}"
 
 
-def ingest_season(conn: sqlite3.Connection, comp_id: int, page: str, *, current: bool) -> dict:
-    label, y0, y1 = season_years(page)
+def ingest_season(
+    conn: sqlite3.Connection, comp: Competition, comp_id: int, page: str, *, current: bool
+) -> dict:
+    label, y0, y1 = season_years(page, comp.title_prefix)
     max_age = 6 * 3600 if current else None
     html = wiki_rendered_html(page, max_age_s=max_age)
     table = parse_league_table(html)
     matrix, missing = parse_result_matrix(html)
-    rec = reconcile(table, matrix, missing)
+    rec = reconcile(table, matrix, missing, allow_derive=not current)
     n = len(table)
     all_matches = matrix + rec.derived
     complete = rec.complete
 
-    if not complete and not current:
+    if not complete and not current and comp.en_suffix:
         # The sv article's matrix and table disagree. Repair against the
         # independently edited English Wikipedia article, accepting only
         # combinations that exactly reproduce a published table.
         en_matrix: list = []
         en_table: list = []
         try:
-            en_html = wiki_rendered_html(en_page_title(label), lang="en")
+            en_html = wiki_rendered_html(en_page_title(comp, label), lang="en")
             en_matrix, _ = parse_result_matrix(en_html)
             try:
                 en_table = parse_league_table(en_html)
@@ -105,6 +141,7 @@ def ingest_season(conn: sqlite3.Connection, comp_id: int, page: str, *, current:
                     "resultatmatrisen och engelska Wikipedia."
                 )
                 rec.note = f"{rec.note} {note}".strip() if rec.note else note
+
     # Incomplete historical seasons (e.g. the 33-round 1957/58 marathon,
     # where a cross table cannot hold all meetings, or matrices whose
     # single-goal typos cannot be pinned to one specific match) get no
@@ -140,7 +177,9 @@ def ingest_season(conn: sqlite3.Connection, comp_id: int, page: str, *, current:
 
         conn.execute("DELETE FROM league_table WHERE season_id = ?", (season_id,))
         for r in table:
-            club_id = db.get_or_create_club(conn, canonical_name(r.team, r.team_link), r.team_link)
+            club_id = db.get_or_create_club(
+                conn, canonical_name(r.team, r.team_link), r.team_link, ns=comp.ns
+            )
             conn.execute(
                 """
                 INSERT INTO league_table
@@ -159,8 +198,12 @@ def ingest_season(conn: sqlite3.Connection, comp_id: int, page: str, *, current:
                 (season_id,),
             )
             for m in (all_matches if ingest_matches else []):
-                home_id = db.get_or_create_club(conn, canonical_name(m.home, m.home_link), m.home_link)
-                away_id = db.get_or_create_club(conn, canonical_name(m.away, m.away_link), m.away_link)
+                home_id = db.get_or_create_club(
+                    conn, canonical_name(m.home, m.home_link), m.home_link, ns=comp.ns
+                )
+                away_id = db.get_or_create_club(
+                    conn, canonical_name(m.away, m.away_link), m.away_link, ns=comp.ns
+                )
                 conn.execute(
                     """
                     INSERT INTO match (season_id, home_club_id, away_club_id,
@@ -177,30 +220,27 @@ def ingest_season(conn: sqlite3.Connection, comp_id: int, page: str, *, current:
     return {
         "page": page,
         "teams": n,
-        "table_rows": len(table),
         "matrix_matches": len(all_matches) if ingest_matches else 0,
-        "derived": len(rec.derived),
         "expected": n * (n - 1),
         "complete": complete,
         "note": rec.note,
-        "problems": rec.problems if not current else [],
     }
 
 
 def run(conn: sqlite3.Connection) -> list[dict]:
-    comp_id = db.get_or_create_competition(conn, "allsvenskan", "Allsvenskan")
-    pages = allsvenskan_season_pages()
     today = dt.date.today()
     results = []
-    for page in pages:
-        label, y0, y1 = season_years(page)
-        current = y1 >= today.year
-        info = ingest_season(conn, comp_id, page, current=current)
-        results.append(info)
-        print(
-            f"{page}: {info['teams']} lag, {info['matrix_matches']}/{info['expected']} "
-            f"matcher{' (komplett)' if info['complete'] else ''}"
-        )
+    for comp in COMPETITIONS:
+        comp_id = db.get_or_create_competition(conn, comp.code, comp.name)
+        for page in season_pages(comp):
+            label, y0, y1 = season_years(page, comp.title_prefix)
+            current = y1 >= today.year
+            info = ingest_season(conn, comp, comp_id, page, current=current)
+            results.append(info)
+            print(
+                f"{page}: {info['teams']} lag, {info['matrix_matches']}/{info['expected']} "
+                f"matcher{' (komplett)' if info['complete'] else ''}"
+            )
     return results
 
 

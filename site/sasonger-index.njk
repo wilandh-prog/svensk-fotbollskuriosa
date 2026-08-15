@@ -1,24 +1,31 @@
 ---
 layout: base.njk
 title: "Säsonger"
-description: "Alla allsvenska säsonger sedan 1924/1925 med sluttabeller och datatäckning."
+description: "Sluttabeller för alla säsonger av Allsvenskan, Superettan och Damallsvenskan."
 permalink: /sasonger/
 ---
 <h1>Säsongerna</h1>
 <p>Sluttabeller för samtliga {{ generated.seasons.length }} säsonger.
    ✓ = komplett matchdata (alla resultat verifierade mot sluttabellen).</p>
-<div class="table-wrap">
-<table>
-  <thead><tr><th>Säsong</th><th>Seriesegrare</th><th>Lag</th><th>Matchdata</th></tr></thead>
-  <tbody>
-  {% for s in generated.seasons | reverse %}
-    <tr>
-      <td><a href="/sasonger/{{ s.label | seasonSlug }}/">{{ s.label }}</a>{% if s.is_current %} (pågår){% endif %}</td>
-      <td>{% if not s.is_current %}{{ s.table[0].club }}{% else %}–{% endif %}</td>
-      <td>{{ s.num_teams }}</td>
-      <td>{% if s.match_data_complete %}✓{% elif s.is_current %}delvis{% else %}–{% endif %}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-</div>
+{% for comp in generated.meta.competitions %}
+<section>
+  <h2>{{ comp.name }}</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Säsong</th><th>Seriesegrare</th><th>Lag</th><th>Matchdata</th></tr></thead>
+    <tbody>
+    {% for s in generated.seasons | reverse %}
+      {% if s.comp == comp.code %}
+      <tr>
+        <td><a href="/sasonger/{{ s.slug }}/">{{ s.label }}</a>{% if s.is_current %} (pågår){% endif %}</td>
+        <td>{% if not s.is_current %}{{ s.table[0].club }}{% else %}–{% endif %}</td>
+        <td>{{ s.num_teams }}</td>
+        <td>{% if s.match_data_complete %}✓{% elif s.is_current %}delvis{% else %}–{% endif %}</td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endfor %}

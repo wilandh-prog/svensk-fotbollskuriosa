@@ -52,8 +52,27 @@ Alla källor probades med riktiga anrop innan arkitekturen låstes (2026-08-15):
 återskapar den publicerade sluttabellen (S/V/O/F/GM/IM per klubb). Avvikelser
 reparateras via en-Wikipedia-korsverifiering; specialfall (tilldömda matcher,
 Malmö FF:s uteslutning 1933/34, maratonsäsongen 1957/58) hanteras explicit.
-95 av 102 säsonger har komplett verifierad matchdata; övriga publiceras med
-enbart tabelldata och en förklaring på säsongssidan.
+Säsonger som inte kan verifieras publiceras med enbart tabelldata och en
+förklaring på säsongssidan.
+
+**Täckning** (efter verifiering):
+
+| Liga | Säsonger | Komplett matchdata |
+|---|---|---|
+| Allsvenskan | 102 (1924/25–2026) | 95 |
+| Superettan | 27 (2000–2026) | 24 |
+| Damallsvenskan | 39 (1988–2026) | 17 |
+
+Herr- och damklubbar hålls i separata namnrymder i databasen så att t.ex.
+Hammarby IF (herr) och Hammarby IF (dam) aldrig blandas ihop trots samma namn.
+Kuriositetsmotorn är i nuläget avgränsad till Allsvenskan; Superettan och
+Damallsvenskan exponeras via säsongs- och klubbsidorna.
+
+**Svenska cupen** ingår inte i lanseringen: cupen saknar sluttabeller att
+verifiera matchresultat emot, och Wikipedias cupartiklar har skiftande
+bracket-format över åren. Utan en oberoende verifieringsmodell skulle
+cupstatistik bryta mot sajtens korrekthetsprincip — den läggs till när en
+pålitlig avstämningsmetod finns.
 
 ## Kom igång lokalt
 

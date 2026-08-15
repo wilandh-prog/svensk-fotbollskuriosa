@@ -65,20 +65,28 @@ def parse_openfootball(text: str, default_year: int) -> list[dict]:
     return matches
 
 
+FILE_COMPETITIONS = {"se1": ("allsvenskan", "Allsvenskan"), "se2": ("superettan", "Superettan")}
+
+
 def available_files() -> list[str]:
     body = cached_get(LISTING_URL, max_age_s=DAY_S)
-    return sorted(x["name"] for x in json.loads(body) if x["name"].endswith("_se1.txt"))
+    return sorted(
+        x["name"]
+        for x in json.loads(body)
+        if x["name"].endswith(("_se1.txt", "_se2.txt"))
+    )
 
 
 def ingest_file(conn: sqlite3.Connection, name: str) -> dict:
     year = int(name.split("_")[0])
+    league = name.split("_")[1].split(".")[0]
     today = dt.date.today()
     text = cached_get(RAW_URL.format(name=name), max_age_s=DAY_S if year >= today.year - 1 else None)
     matches = parse_openfootball(text, year)
     if not matches:
         raise RuntimeError(f"{name}: no matches parsed")
 
-    comp_id = db.get_or_create_competition(conn, "allsvenskan", "Allsvenskan")
+    comp_id = db.get_or_create_competition(conn, *FILE_COMPETITIONS[league])
     row = conn.execute(
         "SELECT id, num_teams FROM season WHERE competition_id = ? AND label = ?",
         (comp_id, str(year)),

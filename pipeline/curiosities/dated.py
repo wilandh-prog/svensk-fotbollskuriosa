@@ -29,6 +29,7 @@ def on_this_day(conn: sqlite3.Connection):
                h.name AS home, a.name AS away, m.home_goals, m.away_goals
         FROM match m
         JOIN season s ON s.id = m.season_id
+            AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club h ON h.id = m.home_club_id
         JOIN club a ON a.id = m.away_club_id
         WHERE m.date IS NOT NULL
@@ -49,6 +50,7 @@ def _dated_season_matches(conn: sqlite3.Connection):
                h.name AS home, a.name AS away
         FROM match m
         JOIN season s ON s.id = m.season_id AND s.has_dates = 1
+            AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club h ON h.id = m.home_club_id
         JOIN club a ON a.id = m.away_club_id
         WHERE m.date IS NOT NULL
@@ -133,6 +135,7 @@ def ht_comebacks(conn: sqlite3.Connection):
                     ELSE m.ht_home - m.ht_away END AS deficit
         FROM match m
         JOIN season s ON s.id = m.season_id
+            AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club h ON h.id = m.home_club_id
         JOIN club a ON a.id = m.away_club_id
         WHERE m.ht_home IS NOT NULL

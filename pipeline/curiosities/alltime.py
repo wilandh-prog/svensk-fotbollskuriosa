@@ -24,6 +24,7 @@ def maraton_table(conn: sqlite3.Connection):
                SUM(lt.won) * 3 + SUM(lt.drawn) AS points_3p
         FROM league_table lt
         JOIN season s ON s.id = lt.season_id AND s.is_current = 0
+            AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club c ON c.id = lt.club_id
         GROUP BY lt.club_id
         ORDER BY points_3p DESC
@@ -49,6 +50,7 @@ def league_titles(conn: sqlite3.Connection):
                GROUP_CONCAT(s.label, ', ') AS seasons
         FROM league_table lt
         JOIN season s ON s.id = lt.season_id AND s.is_current = 0
+            AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club c ON c.id = lt.club_id
         WHERE lt.position = 1
         GROUP BY lt.club_id
@@ -73,6 +75,7 @@ def most_seasons_no_title(conn: sqlite3.Connection):
                MIN(lt.position) AS best_position
         FROM league_table lt
         JOIN season s ON s.id = lt.season_id AND s.is_current = 0
+            AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club c ON c.id = lt.club_id
         GROUP BY lt.club_id
         HAVING SUM(lt.position = 1) = 0
@@ -96,6 +99,7 @@ def yo_yo_clubs(conn: sqlite3.Connection):
         SELECT lt.club_id, c.name AS club, s.start_year, s.end_year
         FROM league_table lt
         JOIN season s ON s.id = lt.season_id
+            AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club c ON c.id = lt.club_id
         ORDER BY lt.club_id, s.start_year, s.label
         """
@@ -128,6 +132,7 @@ def ever_presents(conn: sqlite3.Connection):
         SELECT lt.club_id, c.name AS club, s.start_year, s.end_year, s.label
         FROM league_table lt
         JOIN season s ON s.id = lt.season_id
+            AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         JOIN club c ON c.id = lt.club_id
         ORDER BY lt.club_id, s.start_year, s.label
         """

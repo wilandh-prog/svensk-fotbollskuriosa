@@ -11,7 +11,7 @@ SELECT s.label AS season, s.start_year, s.num_teams, c.name AS club,
 FROM league_table lt
 JOIN season s ON s.id = lt.season_id
 JOIN club c ON c.id = lt.club_id
-WHERE s.is_current = 0
+WHERE s.is_current = 0 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
 """
 
 
@@ -124,7 +124,7 @@ def closest_title_races(conn):
         JOIN league_table lt2 ON lt2.season_id = s.id AND lt2.position = 2
         JOIN club w ON w.id = lt1.club_id
         JOIN club r ON r.id = lt2.club_id
-        WHERE s.is_current = 0
+        WHERE s.is_current = 0 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         ORDER BY (lt1.points - lt2.points),
                  ((lt1.gf - lt1.ga) - (lt2.gf - lt2.ga))
         LIMIT 10
@@ -151,7 +151,7 @@ def biggest_title_margins(conn):
         JOIN league_table lt2 ON lt2.season_id = s.id AND lt2.position = 2
         JOIN club w ON w.id = lt1.club_id
         JOIN club r ON r.id = lt2.club_id
-        WHERE s.is_current = 0
+        WHERE s.is_current = 0 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         ORDER BY margin DESC, (lt1.points - lt2.points) / CAST(lt1.played AS REAL) DESC
         LIMIT 10
         """
@@ -173,7 +173,7 @@ def goal_rich_seasons(conn):
                SUM(lt.gf) AS goals, SUM(lt.played) / 2 AS matches,
                ROUND(SUM(lt.gf) * 1.0 / (SUM(lt.played) / 2), 2) AS goals_per_match
         FROM league_table lt JOIN season s ON s.id = lt.season_id
-        WHERE s.is_current = 0
+        WHERE s.is_current = 0 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         GROUP BY s.id ORDER BY goals_per_match DESC LIMIT 10
         """
     ).fetchall()
@@ -194,7 +194,7 @@ def goal_poor_seasons(conn):
                SUM(lt.gf) AS goals, SUM(lt.played) / 2 AS matches,
                ROUND(SUM(lt.gf) * 1.0 / (SUM(lt.played) / 2), 2) AS goals_per_match
         FROM league_table lt JOIN season s ON s.id = lt.season_id
-        WHERE s.is_current = 0
+        WHERE s.is_current = 0 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         GROUP BY s.id ORDER BY goals_per_match ASC LIMIT 10
         """
     ).fetchall()
@@ -218,7 +218,7 @@ def low_scoring_champions(conn):
         FROM league_table lt
         JOIN season s ON s.id = lt.season_id
         JOIN club c ON c.id = lt.club_id
-        WHERE lt.position = 1 AND s.is_current = 0
+        WHERE lt.position = 1 AND s.is_current = 0 AND s.competition_id = (SELECT id FROM competition WHERE code = 'allsvenskan')
         ORDER BY points_share ASC LIMIT 10
         """
     ).fetchall()

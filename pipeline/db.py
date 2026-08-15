@@ -32,8 +32,12 @@ CREATE TABLE IF NOT EXISTS season (
 
 CREATE TABLE IF NOT EXISTS club (
     id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    wiki_page TEXT
+    name TEXT NOT NULL,
+    -- 'herr' / 'dam': women's clubs live in their own namespace so a
+    -- shared name (Hammarby IF, AIK) never merges two organisations
+    ns TEXT NOT NULL DEFAULT 'herr',
+    wiki_page TEXT,
+    UNIQUE (name, ns)
 );
 
 CREATE TABLE IF NOT EXISTS club_alias (
@@ -96,8 +100,12 @@ def get_or_create_competition(conn: sqlite3.Connection, code: str, name: str) ->
     return cur.lastrowid
 
 
-def get_or_create_club(conn: sqlite3.Connection, canonical: str, wiki_page: str | None = None) -> int:
-    row = conn.execute("SELECT id FROM club WHERE name = ?", (canonical,)).fetchone()
+def get_or_create_club(
+    conn: sqlite3.Connection, canonical: str, wiki_page: str | None = None, ns: str = "herr"
+) -> int:
+    row = conn.execute(
+        "SELECT id FROM club WHERE name = ? AND ns = ?", (canonical, ns)
+    ).fetchone()
     if row:
         if wiki_page:
             conn.execute(
@@ -106,6 +114,6 @@ def get_or_create_club(conn: sqlite3.Connection, canonical: str, wiki_page: str 
             )
         return row["id"]
     cur = conn.execute(
-        "INSERT INTO club (name, wiki_page) VALUES (?, ?)", (canonical, wiki_page)
+        "INSERT INTO club (name, ns, wiki_page) VALUES (?, ?, ?)", (canonical, ns, wiki_page)
     )
     return cur.lastrowid

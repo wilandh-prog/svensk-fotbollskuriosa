@@ -1,23 +1,44 @@
 ---
 layout: base.njk
 title: "Klubbar"
-description: "Alla 67 klubbar som spelat i Allsvenskan sedan 1924 — historiska egendomligheter och rekord för varje klubb."
+description: "Alla klubbar som spelat i Allsvenskan, Superettan eller Damallsvenskan — historiska egendomligheter och rekord för varje klubb."
 permalink: /klubbar/
 ---
-<h1>Klubbarna i Allsvenskan</h1>
-<p>{{ generated.clubs.length }} klubbar har spelat i Allsvenskan sedan starten
-   1924/1925. Klicka på en klubb för dess historia och egendomligheter.</p>
+<h1>Klubbarna</h1>
+
+<h2>Herrar (Allsvenskan &amp; Superettan)</h2>
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Klubb</th><th>Säsonger</th><th>Seriesegrar</th><th>Bästa placering</th></tr></thead>
+  <thead><tr><th>Klubb</th><th>Säsonger i Allsvenskan</th><th>Seriesegrar</th><th>Bästa placering</th></tr></thead>
   <tbody>
   {% for club in generated.clubs | sort(true, false, "totals.seasons") %}
+    {% if club.ns == "herr" %}
     <tr>
       <td><a href="/klubbar/{{ club.slug }}/">{{ club.name }}</a></td>
       <td>{{ club.totals.seasons }}</td>
       <td>{{ club.titles.length }}</td>
-      <td>{{ club.best_position }}</td>
+      <td>{{ club.best_position or "–" }}</td>
     </tr>
+    {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h2>Damer (Damallsvenskan)</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Klubb</th><th>Säsonger i Damallsvenskan</th><th>Seriesegrar</th><th>Bästa placering</th></tr></thead>
+  <tbody>
+  {% for club in generated.clubs | sort(true, false, "totals.seasons") %}
+    {% if club.ns == "dam" %}
+    <tr>
+      <td><a href="/klubbar/{{ club.slug }}/">{{ club.name }}</a></td>
+      <td>{{ club.totals.seasons }}</td>
+      <td>{{ club.titles.length }}</td>
+      <td>{{ club.best_position or "–" }}</td>
+    </tr>
+    {% endif %}
   {% endfor %}
   </tbody>
 </table>

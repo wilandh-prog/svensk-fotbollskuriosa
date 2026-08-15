@@ -107,8 +107,32 @@ def check_points_advisory(conn: sqlite3.Connection) -> list[str]:
     return notes
 
 
+def check_current_season_match_counts(conn: sqlite3.Connection) -> list[str]:
+    """A running season's match list must track its live table: the count
+    of stored matches may only differ marginally from the table's played
+    sum (guards against fabricated/stale matrix data)."""
+    fails: list[str] = []
+    for s in conn.execute("SELECT * FROM season WHERE is_current = 1").fetchall():
+        played = conn.execute(
+            "SELECT SUM(played) AS p FROM league_table WHERE season_id = ?", (s["id"],)
+        ).fetchone()["p"] or 0
+        n_matches = conn.execute(
+            "SELECT COUNT(*) AS c FROM match WHERE season_id = ?", (s["id"],)
+        ).fetchone()["c"]
+        if abs(n_matches - played // 2) > 10:
+            fails.append(
+                f"{s['label']}: {n_matches} matcher lagrade men tabellen anger "
+                f"{played // 2} spelade"
+            )
+    return fails
+
+
 def run(conn: sqlite3.Connection) -> list[str]:
-    fails = check_tables(conn) + check_matches_vs_table(conn)
+    fails = (
+        check_tables(conn)
+        + check_matches_vs_table(conn)
+        + check_current_season_match_counts(conn)
+    )
     for note in check_points_advisory(conn):
         print(f"  [advisory] {note}")
     return fails

@@ -4,14 +4,14 @@ pagination:
   data: generated.seasons
   size: 1
   alias: s
-permalink: "/sasonger/{{ s.label | seasonSlug }}/"
+permalink: "/sasonger/{{ s.slug }}/"
 eleventyComputed:
-  title: "Allsvenskan {{ s.label }}"
-  description: "Sluttabell och kuriosa för Allsvenskan {{ s.label }}{% if not s.is_current %} — seriesegrare {{ s.table[0].club }}{% endif %}."
+  title: "{{ s.comp_name }} {{ s.label }}"
+  description: "Sluttabell och kuriosa för {{ s.comp_name }} {{ s.label }}{% if not s.is_current %} — seriesegrare {{ s.table[0].club }}{% endif %}."
 ---
 <article>
-  <p class="kicker"><a href="/sasonger/">Säsonger</a></p>
-  <h1>Allsvenskan {{ s.label }}{% if s.is_current %} <span class="muted">(pågår)</span>{% endif %}</h1>
+  <p class="kicker"><a href="/sasonger/">Säsonger</a> · {{ s.comp_name }}</p>
+  <h1>{{ s.comp_name }} {{ s.label }}{% if s.is_current %} <span class="muted">(pågår)</span>{% endif %}</h1>
 
   {% if s.notes %}
   <div class="note">{{ s.notes }}</div>
