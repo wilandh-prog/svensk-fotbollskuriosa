@@ -155,3 +155,29 @@ def test_form_string_orders_oldest_first():
         {"won": False, "lost": False, "drew": True},
     ]
     assert form_string(history, 3) == "O F V"
+
+
+def test_form_history_never_spans_a_gap_in_dated_seasons(conn):
+    """The seasons used for form must be contiguous — no jumping a hole."""
+    from pipeline.previews import unbroken_dated_seasons
+
+    for comp in ("allsvenskan", "superettan", "damallsvenskan"):
+        ids = unbroken_dated_seasons(conn, comp)
+        if not ids:
+            continue
+        years = [
+            conn.execute(
+                "SELECT start_year FROM season WHERE id = ?", (sid,)
+            ).fetchone()["start_year"]
+            for sid in ids
+        ]
+        assert years == sorted(years, reverse=True)
+        for newer, older in zip(years, years[1:]):
+            assert newer - older <= 1, f"{comp}: hål mellan {older} och {newer}"
+        # every season in the run really is dated
+        assert all(
+            conn.execute(
+                "SELECT has_dates FROM season WHERE id = ?", (sid,)
+            ).fetchone()["has_dates"]
+            for sid in ids
+        )

@@ -43,8 +43,38 @@ def upcoming_fixtures(conn: sqlite3.Connection, days: int = PREVIEW_WINDOW_DAYS)
     return [dict(r) for r in rows]
 
 
+def unbroken_dated_seasons(conn: sqlite3.Connection, comp: str) -> list[int]:
+    """Season ids forming the most recent gap-free run of dated seasons.
+
+    A streak must never leap over a season we lack dates for, which would
+    silently splice 2023 onto 2025 and turn two short runs into one long
+    invented one. So the history stops at the first hole going backwards.
+    """
+    rows = conn.execute(
+        """
+        SELECT s.id, s.has_dates FROM season s
+        JOIN competition comp ON comp.id = s.competition_id AND comp.code = ?
+        ORDER BY s.start_year DESC, s.label DESC
+        """,
+        (comp,),
+    ).fetchall()
+    ids: list[int] = []
+    for r in rows:
+        if not r["has_dates"]:
+            break
+        ids.append(r["id"])
+    return ids
+
+
 def _team_history(conn: sqlite3.Connection, club_id: int, comp: str) -> list[dict]:
     """The club's dated matches in this competition, most recent first."""
+    season_ids = unbroken_dated_seasons(conn, comp)
+    if not season_ids:
+        return []
+    placeholders = ",".join(f":s{i}" for i in range(len(season_ids)))
+    params = {"club": club_id, "comp": comp} | {
+        f"s{i}": sid for i, sid in enumerate(season_ids)
+    }
     rows = conn.execute(
         f"""
         SELECT m.date, m.home_club_id, m.away_club_id, m.home_goals, m.away_goals,
@@ -58,9 +88,10 @@ def _team_history(conn: sqlite3.Connection, club_id: int, comp: str) -> list[dic
                                    THEN m.away_club_id ELSE m.home_club_id END
         WHERE (m.home_club_id = :club OR m.away_club_id = :club)
           AND m.date IS NOT NULL
+          AND m.season_id IN ({placeholders})
         ORDER BY m.date DESC, m.id DESC
         """,
-        {"club": club_id, "comp": comp},
+        params,
     ).fetchall()
     out = []
     for r in rows:
