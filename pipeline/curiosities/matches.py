@@ -55,7 +55,7 @@ def biggest_away_wins(conn):
 )
 def highest_scoring(conn):
     rows = conn.execute(
-        BASE + "ORDER BY (m.home_goals + m.away_goals) DESC, m.start_year LIMIT 15"
+        BASE + "ORDER BY (m.home_goals + m.away_goals) DESC, s.start_year LIMIT 15"
     ).fetchall()
     return [dict(r) for r in rows]
 

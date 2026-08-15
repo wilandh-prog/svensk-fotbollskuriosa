@@ -43,21 +43,21 @@ def winless_seasons(conn):
 
 
 @curiosity(
-    "relegated-positive-gd",
-    "Nedflyttade trots plusmålskillnad",
-    "Lag som åkte ur Allsvenskan trots att de gjorde fler mål än de släppte in.",
+    "relegated-best-gd",
+    "Nedflyttade med bäst målskillnad",
+    "Ingen har någonsin åkt ur Allsvenskan med plusmålskillnad — här är "
+    "jumbolagen som kom närmast.",
     "anomalies",
     "tables",
 )
-def relegated_positive_gd(conn):
+def relegated_best_gd(conn):
     # relegation zone approximated as the bottom two of each season
-    return [
-        dict(r)
-        for r in conn.execute(
-            BASE
-            + "AND lt.gf > lt.ga AND lt.position > s.num_teams - 2 ORDER BY s.start_year"
-        ).fetchall()
-    ]
+    return _rows(
+        conn,
+        "AND lt.position > s.num_teams - 2",
+        "(lt.gf - lt.ga) DESC",
+        limit=10,
+    )
 
 
 @curiosity(
