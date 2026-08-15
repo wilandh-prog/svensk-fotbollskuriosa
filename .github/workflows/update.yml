@@ -1,0 +1,75 @@
+name: Uppdatera data och publicera
+
+on:
+  # triggered daily by cron-job.org via the workflow_dispatch API
+  # (see README for the exact cron-job.org configuration) and can also
+  # be run manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  update-build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installera Python-beroenden
+        run: pip install -r requirements.txt
+
+      - name: Uppdatera data (avbryter vid sanity-fel)
+        run: python -m pipeline.update
+
+      - name: Kör tester mot kända historiska fakta
+        run: python -m pytest pipeline/tests -q
+
+      # only reached if update + sanity + tests all passed, so partial
+      # data can never be committed or deployed
+      - name: Committa uppdaterad data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ cache/
+          if git diff --cached --quiet; then
+            echo "Ingen dataändring."
+          else
+            git commit -m "Automatisk datauppdatering $(date -u +%F)"
+            git push
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Bygg sajten
+        env:
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          PATH_PREFIX: /${{ github.event.repository.name }}/
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/_site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
