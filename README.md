@@ -120,8 +120,11 @@ Miljövariabler (behövs bara för korrekt kanonisk URL i produktion):
 
 | Variabel | Exempel | Sätts av |
 |---|---|---|
-| `SITE_URL` | `https://wilandh-prog.github.io/svensk-fotbollskuriosa` | workflowen |
-| `PATH_PREFIX` | `/REPO/` | workflowen |
+| `SITE_URL` | `https://fotboll.xyz` | workflowen |
+| `PATH_PREFIX` | `/` | workflowen |
+
+Workflowen härleder båda ur `site/static/CNAME`: finns filen byggs sajten för
+den domänen i roten, annars för `https://<user>.github.io/<repo>/`.
 
 ## Daglig uppdatering: cron-job.org → GitHub Actions
 
@@ -158,6 +161,27 @@ User-Agent: cron-job.org
 GitHub svarar `204 No Content` när triggern lyckas — sätt gärna cron-job.org
 att larma på annan statuskod. Misslyckas datauppdateringen (sanity-fel) blir
 Actions-körningen röd och **ingen data committas och ingen deploy sker**.
+
+## Egen domän: fotboll.xyz
+
+Sajten ligger på apexdomänen `fotboll.xyz`; `www` pekas om dit av GitHub.
+
+**DNS hos registraren** (ersätt eventuella befintliga A-poster för `@`/`www`):
+
+| Namn | Typ | Värde |
+|---|---|---|
+| `@` | A | `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` |
+| `@` | AAAA | `2606:50c0:8000::153`, `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153` |
+| `www` | CNAME | `wilandh-prog.github.io.` |
+
+**GitHub**: Settings → Pages → Custom domain = `fotboll.xyz`, och när
+certifikatet är utfärdat: **Enforce HTTPS**. Domänen ligger även i
+`site/static/CNAME`, som kopieras till artefaktens rot vid varje deploy —
+raderas filen går sajten tillbaka till `github.io`-adressen.
+
+Skydda mot domänövertagande genom att verifiera domänen under GitHub →
+Settings → Pages → *Verified domains* (kräver en TXT-post
+`_github-pages-challenge-wilandh-prog`).
 
 ## Lägga till en ny kuriositet
 

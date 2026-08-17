@@ -57,11 +57,19 @@ jobs:
           node-version: "22"
           cache: npm
 
+      # site/static/CNAME is the single source of truth for the domain: it is
+      # copied to the artifact root for Pages, and decides whether the build
+      # uses apex URLs or the github.io subpath (delete it to roll back).
       - name: Bygg sajten
-        env:
-          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
-          PATH_PREFIX: /${{ github.event.repository.name }}/
         run: |
+          if [ -s site/static/CNAME ]; then
+            export SITE_URL="https://$(tr -d '[:space:]' < site/static/CNAME)"
+            export PATH_PREFIX=/
+          else
+            export SITE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+            export PATH_PREFIX="/${{ github.event.repository.name }}/"
+          fi
+          echo "Bygger $SITE_URL (pathPrefix $PATH_PREFIX)"
           npm ci
           npm run build
 
