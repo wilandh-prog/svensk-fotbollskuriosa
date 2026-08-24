@@ -132,3 +132,32 @@ tbody tr:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent
   margin-top: 2rem; padding: 1rem; font-size: .84rem; color: var(--muted);
   text-align: center;
 }
+
+/* consent banner: hidden until the script decides to show it, so a visitor
+   who already chose never sees it flash on load */
+.cookie-banner[hidden] { display: none; }
+.cookie-banner {
+  position: fixed; inset: auto 0 0; z-index: 10;
+  display: flex; flex-wrap: wrap; gap: .6rem 1.5rem;
+  align-items: center; justify-content: center;
+  margin: 0 auto; max-width: 62rem;
+  background: var(--card); color: var(--fg);
+  border: 1px solid var(--border); border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  padding: .9rem 1.2rem;
+  box-shadow: 0 -2px 14px rgb(0 0 0 / 12%);
+}
+.cookie-banner h2 { margin: 0 0 .2rem; font-size: 1rem; }
+.cookie-banner p { margin: 0; font-size: .87rem; color: var(--muted); max-width: 44rem; }
+.cookie-banner-actions { display: flex; gap: .5rem; flex-shrink: 0; }
+.cookie-btn {
+  font: inherit; font-size: .9rem; cursor: pointer;
+  padding: .45rem 1.1rem; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+}
+.cookie-btn:hover { border-color: var(--accent); }
+.cookie-btn-primary {
+  background: var(--accent); border-color: var(--accent);
+  color: #fff; font-weight: 600;
+}
+.cookie-btn-primary:hover { filter: brightness(1.1); }

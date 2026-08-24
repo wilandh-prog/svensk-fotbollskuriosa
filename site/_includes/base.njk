@@ -13,10 +13,27 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
   {% if site.analyticsId %}
-  <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.analyticsId }}"></script>
   <script>
+    // Consent Mode v2: nothing is stored until the visitor accepts. A stored
+    // choice is replayed here, before the first hit, so returning visitors are
+    // measured from page one and never see the banner again.
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
+    gtag('consent', 'default', {
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      analytics_storage: 'denied',
+      wait_for_update: 500
+    });
+    try {
+      if (localStorage.getItem('cookie-consent') === 'granted') {
+        gtag('consent', 'update', { analytics_storage: 'granted' });
+      }
+    } catch (e) { /* storage blocked: stay denied */ }
+  </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.analyticsId }}"></script>
+  <script>
     gtag('js', new Date());
     gtag('config', '{{ site.analyticsId }}', { anonymize_ip: true });
   </script>
@@ -43,6 +60,65 @@
      {{ generated.meta.season_count }} säsonger ·
      {{ generated.meta.match_count | nf }} matcher ·
      {{ generated.meta.club_count }} klubbar.</p>
+  {% if site.analyticsId %}<p><a href="#" id="cookie-settings">Kakor och besöksstatistik</a></p>{% endif %}
 </footer>
+{% if site.analyticsId %}
+<div id="cookie-banner" class="cookie-banner" role="dialog"
+     aria-labelledby="cookie-banner-title" aria-describedby="cookie-banner-text" hidden>
+  <div>
+    <h2 id="cookie-banner-title">Kakor för besöksstatistik</h2>
+    <p id="cookie-banner-text">Sajten kan använda Google Analytics för att räkna besök
+      och se vilka sidor som läses. Det kräver ditt samtycke och sätter en kaka.
+      Nekar du samlas ingen statistik in – sajten fungerar precis lika bra ändå.</p>
+  </div>
+  <div class="cookie-banner-actions">
+    <button type="button" id="cookie-accept" class="cookie-btn cookie-btn-primary">Godkänn</button>
+    <button type="button" id="cookie-decline" class="cookie-btn">Neka</button>
+  </div>
+</div>
+<script>
+  (function () {
+    var KEY = 'cookie-consent';
+    var banner = document.getElementById('cookie-banner');
+    function read() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+    function save(v) { try { localStorage.setItem(KEY, v); } catch (e) { /* ignore */ } }
+    function choose(v) {
+      save(v);
+      gtag('consent', 'update', { analytics_storage: v });
+      // withdrawing consent should also clear what was already set
+      if (v === 'denied') dropAnalyticsCookies();
+      banner.hidden = true;
+    }
+    function dropAnalyticsCookies() {
+      var host = location.hostname;
+      // _ga is set on the registrable domain, so expire it on both
+      var domains = [host, '.' + host, '.' + host.split('.').slice(-2).join('.')];
+      document.cookie.split(';').forEach(function (c) {
+        var name = c.split('=')[0].trim();
+        if (name.indexOf('_ga') !== 0) return;
+        domains.forEach(function (d) {
+          document.cookie = name + '=; max-age=0; path=/; domain=' + d;
+        });
+        document.cookie = name + '=; max-age=0; path=/';
+      });
+    }
+    document.getElementById('cookie-accept')
+      .addEventListener('click', function () { choose('granted'); });
+    document.getElementById('cookie-decline')
+      .addEventListener('click', function () { choose('denied'); });
+    // the footer link lets a visitor revisit a choice they already made
+    var settings = document.getElementById('cookie-settings');
+    if (settings) {
+      settings.addEventListener('click', function (e) {
+        e.preventDefault();
+        banner.hidden = false;
+        document.getElementById('cookie-accept').focus();
+      });
+    }
+    // only asked once; the banner starts hidden so a stored choice never flashes
+    if (!read()) banner.hidden = false;
+  })();
+</script>
+{% endif %}
 </body>
 </html>
