@@ -61,6 +61,11 @@ jobs:
       # copied to the artifact root for Pages, and decides whether the build
       # uses apex URLs or the github.io subpath (delete it to roll back).
       - name: Bygg sajten
+        env:
+          # GA4 measurement ID for fotboll.xyz. Only set here, so local builds
+          # stay untracked; override with a repository variable to switch
+          # property without touching the workflow.
+          GA_MEASUREMENT_ID: ${{ vars.GA_MEASUREMENT_ID || 'G-3EQEHNK1VD' }}
         run: |
           if [ -s site/static/CNAME ]; then
             export SITE_URL="https://$(tr -d '[:space:]' < site/static/CNAME)"
